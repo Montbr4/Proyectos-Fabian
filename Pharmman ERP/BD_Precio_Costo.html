@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <style>
+      :root { --primary: #6f42c1; --bg: #f0f2f5; --white: #ffffff; --text: #333; --accent: #ff6b6b; --green: #28a745; }
+      body { font-family: 'Poppins', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); min-height: 100vh; box-sizing: border-box; }
+      
+      .nav-floating { position: fixed; top: 20px; z-index: 100; }
+      .nav-floating.left { left: 20px; }
+      
+      .nav-btn-float { 
+          background: #333; 
+          color: white; 
+          padding: 10px 20px; 
+          border-radius: 30px; 
+          text-decoration: none; 
+          font-size: 0.9rem; 
+          font-weight: 700; 
+          box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+          transition: all 0.3s ease; 
+          
+          opacity: 0.5; 
+          pointer-events: none; 
+          cursor: wait; 
+      }
+
+      .nav-btn-float.active {
+          opacity: 1; 
+          pointer-events: auto; 
+          cursor: pointer;
+      }
+      .nav-btn-float.active:hover { transform: translateY(-2px); opacity: 1; box-shadow: 0 6px 15px rgba(0,0,0,0.3); }
+
+      .container { max-width: 900px; margin: 60px auto 0; animation: fadeIn 0.5s ease; }
+      .card { background: var(--white); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.02); }
+      
+      h2 { color: var(--primary); margin: 0 0 10px 0; padding-bottom: 10px; border-bottom: 2px solid rgba(111, 66, 193, 0.1); font-size: 1.5rem; font-weight: 700; text-align:center; }
+      .info-text { text-align:center; color:#666; font-size:0.85rem; margin-bottom:25px; background: #f8f9fa; padding: 10px; border-radius: 10px; }
+
+      .search-box { width: 100%; padding: 15px; border: 2px solid #eee; border-radius: 50px; font-size: 1rem; margin-bottom: 20px; box-sizing: border-box; outline: none; transition: all 0.3s; font-family: inherit; }
+      .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(111, 66, 193, 0.1); }
+
+      .table-container { max-height: 65vh; overflow-y: auto; border: 1px solid #eee; border-radius: 12px; }
+      table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+      th { position: sticky; top: 0; background: #fafafa; z-index: 10; text-align: left; padding: 15px; font-weight: 700; color: #555; border-bottom: 2px solid #eee; }
+      td { padding: 8px 15px; border-bottom: 1px solid #f9f9f9; vertical-align: middle; }
+      
+      .cost-input { width: 100px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; text-align: right; font-family: inherit; font-size: 0.95rem; transition: border 0.3s; }
+      .cost-input:focus { border-color: var(--primary); outline: none; background: #fffdf5; }
+      
+      .btn-save-row { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+      .btn-save-row:hover { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(111, 66, 193, 0.2); background: #5a32a3; }
+      .btn-save-row:disabled { background: #ccc; transform: none; box-shadow: none; cursor: not-allowed; }
+
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+  </head>
+  <body>
+    <div class="nav-floating left">
+        <a id="homeLink" class="nav-btn-float">🏠 MENÚ</a>
+    </div>
+
+    <div class="container">
+      <div class="card">
+        <h2>Precio Costo</h2>
+        <div class="info-text">
+            <b>Atención:</b> Al modificar un costo aquí, el sistema actualizará automáticamente la columna <b>PRECIO_C</b> en los inventarios de <b>Magdalena, Surco y SMP</b>.
+        </div>
+        
+        <input type="text" class="search-box" id="search" placeholder="🔍 Buscar producto..." onkeyup="filtrarTabla()">
+        
+        <div class="table-container">
+            <table id="tablaCostos">
+                <thead>
+                    <tr>
+                        <th width="55%">NOMBRE PRODUCTO</th>
+                        <th width="25%">PRECIO COSTO (S/.)</th>
+                        <th width="20%" style="text-align:center;">ACCIÓN</th>
+                    </tr>
+                </thead>
+                <tbody id="bodyCostos">
+                    <tr><td colspan="3" style="text-align:center; padding:30px; color:#999;">Cargando base de datos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let currentUser = "<?= usuario ?>";
+      let listaCostos = [];
+
+      function init() {
+        google.script.run.withSuccessHandler(url => {
+            const link = document.getElementById('homeLink');
+            link.href = url + "?page=inicio&usuario=" + currentUser;
+            
+            link.classList.add('active');
+        }).getUrl();
+        
+        cargarDatos();
+      }
+
+      function cargarDatos() {
+        google.script.run
+        .withSuccessHandler(data => {
+            listaCostos = data;
+            renderTabla(listaCostos);
+        })
+        .withFailureHandler(e => {
+            document.getElementById('bodyCostos').innerHTML = `<tr><td colspan="3" style="text-align:center; color:red; padding:20px;">Error: ${e.message}</td></tr>`;
+        })
+        .obtenerListaPreciosCosto();
+      }
+
+      function renderTabla(lista) {
+        const tbody = document.getElementById('bodyCostos');
+        
+        if (lista.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:30px; color:#999;">No se encontraron productos registrados en la BD Global.</td></tr>';
+            return;
+        }
+
+        let htmlRows = "";
+        
+        lista.forEach((item, index) => {
+            htmlRows += `<tr>
+                <td>${item.producto}</td>
+                <td>
+                    <input type="number" step="0.01" class="cost-input" id="input_costo_${index}" value="${item.precioCosto}" placeholder="0.00">
+                </td>
+                <td style="text-align:center;">
+                    <button class="btn-save-row" onclick="guardarCosto('${item.producto}', 'input_costo_${index}', this)">
+                        Guardar
+                    </button>
+                </td>
+            </tr>`;
+        });
+        
+        tbody.innerHTML = htmlRows;
+      }
+
+      let timeoutSearch = null;
+      function filtrarTabla() {
+        clearTimeout(timeoutSearch);
+        timeoutSearch = setTimeout(() => {
+            const texto = document.getElementById('search').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            
+            const filtrados = listaCostos.filter(item => 
+                item.producto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(texto)
+            );
+            
+            renderTabla(filtrados);
+        }, 300);
+      }
+
+      function guardarCosto(producto, idInput, btnElement) {
+        const nuevoCosto = document.getElementById(idInput).value;
+        
+        if(nuevoCosto < 0 || nuevoCosto === "") return alert("Por favor, ingrese un costo válido (mayor o igual a 0).");
+
+        const textoOriginal = btnElement.innerText;
+        btnElement.innerText = "Esperando";
+        btnElement.disabled = true;
+        btnElement.style.background = "#666";
+
+        google.script.run
+        .withSuccessHandler(res => {
+            btnElement.innerText = "Listo";
+            btnElement.style.background = "var(--green)";
+            btnElement.disabled = false;
+            
+            setTimeout(() => {
+                btnElement.innerText = textoOriginal;
+                btnElement.style.background = "var(--primary)";
+            }, 2000);
+
+            let itemLocal = listaCostos.find(i => i.producto === producto);
+            if(itemLocal) {
+                itemLocal.precioCosto = parseFloat(nuevoCosto);
+            }
+        })
+        .withFailureHandler(e => {
+            alert("Error al guardar: " + e);
+            btnElement.innerText = "Error";
+            btnElement.disabled = false;
+            btnElement.style.background = "var(--accent)";
+        })
+        .actualizarCostoGlobal(producto, nuevoCosto);
+      }
+
+      window.onload = init;
+    </script>
+  </body>
+</html>
