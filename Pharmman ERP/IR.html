@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <style>
+    :root { --primary: #2E86AB; --bg: #f0f2f5; --white: #ffffff; --text: #333; --accent: #d39e00; }
+    body { font-family: 'Poppins', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); min-height: 100vh; box-sizing: border-box; }
+    
+    .nav-floating { position: fixed; top: 20px; left: 20px; z-index: 100; }
+    
+    .nav-btn-float { 
+        background: #000; 
+        color: white; 
+        padding: 10px 20px; 
+        border-radius: 30px; 
+        text-decoration: none; 
+        font-size: 0.9rem; 
+        font-weight: 700; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+        transition: all 0.3s ease; 
+        
+        opacity: 0.5; 
+        pointer-events: none; 
+        cursor: wait; 
+    }
+
+    .nav-btn-float.active {
+        opacity: 1; 
+        pointer-events: auto; 
+        cursor: pointer;
+    }
+    .nav-btn-float.active:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.3); }
+
+    .container { display: flex; justify-content: center; align-items: flex-start; padding-top: 40px; animation: fadeIn 0.6s ease; max-width: 900px; margin: 0 auto; }
+    
+    .card { background: var(--white); padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 100%; border: 1px solid rgba(0,0,0,0.02); }
+    
+    h2 { color: var(--accent); margin: 0 0 30px 0; padding-bottom: 15px; border-bottom: 2px solid rgba(211, 158, 0, 0.1); font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; text-align: center; }
+    
+    .form-grid { display: grid; gap: 20px; }
+    
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    
+    .form-group { margin-bottom: 0; }
+    label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.85rem; color: #555; margin-left: 5px; }
+    input, select, textarea { width: 100%; padding: 15px; border: 1px solid #eee; border-radius: 12px; font-family: inherit; font-size: 0.95rem; background: #fafafa; transition: all 0.3s; box-sizing: border-box; }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); background: #fff; outline: none; box-shadow: 0 0 0 4px rgba(211, 158, 0, 0.1); }
+    
+    textarea { resize: vertical; min-height: 80px; }
+    
+    .add-section { background: #fffdf5; border: 1px dashed #d39e00; padding: 20px; border-radius: 15px; }
+    .grid-add { display: grid; grid-template-columns: 2fr 1fr auto; gap: 15px; align-items: end; }
+    
+    .btn-add { background: var(--accent); color: white; width: 50px; height: 50px; border: none; border-radius: 12px; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(211, 158, 0, 0.2); }
+    .btn-add:hover { background: #b78900; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem; }
+    th { text-align: left; color: #888; padding: 10px; border-bottom: 1px solid #eee; }
+    td { padding: 10px; border-bottom: 1px solid #f9f9f9; }
+    
+    .btn { background: var(--accent); color: white; padding: 18px; width: 100%; border: none; border-radius: 12px; font-weight: 700; font-size: 1.1rem; cursor: pointer; transition: all 0.3s ease; margin-top: 10px; box-shadow: 0 5px 15px rgba(211, 158, 0, 0.2); letter-spacing: 0.5px; }
+    .btn:hover { background: #b78900; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(211, 158, 0, 0.3); }
+    .btn:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+  <div class="nav-floating">
+      <a id="backLink" class="nav-btn-float">🏠 MENÚ</a>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <h2>Registro de Recepción</h2>
+      
+      <div class="form-grid">
+          <div class="row-2">
+              <div class="form-group">
+                  <label>ID Recepción / Guía</label>
+                  <input type="text" id="idRecepcion" placeholder="Nro de Guía / Nro de Factura">
+              </div>
+              <div class="form-group">
+                  <label>Referencia OC (Opcional)</label>
+                  <input type="text" id="refOC" placeholder="OC-001">
+              </div>
+          </div>
+          
+          <div class="row-2">
+              <div class="form-group">
+                  <label>Proveedor</label>
+                  <select id="prov">
+                      <option>Jhoddal</option><option>Nikzon</option><option>Jeffrey</option><option>Mabel</option><option>Medicorp</option><option>Soto</option><option>Yuki</option><option>Otro</option>
+                  </select>
+              </div>
+              <div class="form-group">
+                  <label>Monto Final a Pagar (S/.)</label>
+                  <input type="number" id="montoPagar" step="0.01" placeholder="0.00">
+              </div>
+          </div>
+
+          <div class="add-section">
+              <label style="color:#b78900; margin-bottom:10px;">Crear Lista de Productos:</label>
+              
+              <div style="margin-bottom:10px;">
+                  <input type="text" id="buscadorProd" placeholder="🔍 Buscar producto..." onkeyup="filtrarProductos()">
+              </div>
+
+              <div class="grid-add">
+                  <div style="margin:0;">
+                      <select id="productoSelect"></select>
+                  </div>
+                  <div style="margin:0;">
+                      <input type="number" id="cantidadProd" min="1" placeholder="Cant." value="1">
+                  </div>
+                  <button type="button" class="btn-add" onclick="agregarProducto()">+</button>
+              </div>
+
+              <table id="tablaProductos">
+                  <thead><tr><th>Producto</th><th>Cant.</th><th></th></tr></thead>
+                  <tbody id="bodyProductos"></tbody>
+              </table>
+              <div id="msgVacio" style="text-align:center; color:#aaa; font-size:0.8rem; padding:10px;">Lista vacía</div>
+          </div>
+          
+          <div class="form-group">
+              <label>Notas</label>
+              <textarea id="notas" placeholder="Notas adicionales o resumen manual..."></textarea>
+          </div>
+          
+          <button id="btnGuardar" class="btn" onclick="guardar()">REGISTRAR PENDIENTE DE PAGO</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = "<?= usuario ?>";
+    let listaItems = [];
+    let inventarioFull = [];
+
+    google.script.run.withSuccessHandler(url => {
+        const link = document.getElementById('backLink');
+        link.href = url + "?page=inicio&usuario=" + currentUser;
+        
+        link.classList.add('active');
+    }).getUrl();
+
+    window.onload = function() {
+        google.script.run.withSuccessHandler(p => {
+            inventarioFull = p;
+            renderOpciones(p);
+        }).obtenerProductosInventario("M");
+    };
+
+    function renderOpciones(lista) {
+        let s = document.getElementById('productoSelect'); 
+        s.innerHTML = '';
+        lista.forEach(x => { 
+            let o = document.createElement('option'); 
+            o.text = x.nombre; 
+            o.value = x.nombre; 
+            s.add(o); 
+        });
+    }
+
+    function filtrarProductos() {
+        const texto = document.getElementById('buscadorProd').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const filtrados = inventarioFull.filter(p => 
+            p.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(texto)
+        );
+        renderOpciones(filtrados);
+    }
+
+    function agregarProducto() {
+        const prod = document.getElementById('productoSelect').value;
+        const cant = parseInt(document.getElementById('cantidadProd').value);
+
+        if (!prod) return;
+        if (cant <= 0) return alert("Cantidad inválida");
+
+        listaItems.push({ producto: prod, cantidad: cant });
+        renderTabla();
+        
+        document.getElementById('cantidadProd').value = 1;
+        document.getElementById('buscadorProd').value = '';
+        renderOpciones(inventarioFull);
+    }
+
+    function renderTabla() {
+        const tbody = document.getElementById('bodyProductos');
+        const msg = document.getElementById('msgVacio');
+        tbody.innerHTML = '';
+
+        if(listaItems.length === 0) {
+            msg.style.display = 'block';
+        } else {
+            msg.style.display = 'none';
+        }
+
+        listaItems.forEach((item, index) => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${item.producto}</td>
+                    <td>${item.cantidad}</td>
+                    <td style="text-align:right;"><span style="color:var(--accent); cursor:pointer; font-weight:bold;" onclick="eliminar(${index})">×</span></td>
+                </tr>
+            `;
+        });
+    }
+
+    function eliminar(index) {
+        listaItems.splice(index, 1);
+        renderTabla();
+    }
+
+    function guardar() {
+        let listaString = listaItems.map(i => `${i.producto} (${i.cantidad})`).join(" | ");
+
+        let data = {
+            idRecepcion: document.getElementById('idRecepcion').value,
+            refOC: document.getElementById('refOC').value || "S/N",
+            proveedor: document.getElementById('prov').value,
+            notas: document.getElementById('notas').value,
+            listaProductos: listaString,
+            montoPagar: document.getElementById('montoPagar').value
+        };
+        
+        if(!data.idRecepcion || !data.montoPagar) return alert("Faltan datos obligatorios (ID o Monto)");
+
+        const btn = document.getElementById('btnGuardar');
+        btn.disabled = true;
+        btn.innerText = "Registrando...";
+
+        google.script.run
+        .withSuccessHandler(res => {
+            alert(res);
+            document.querySelectorAll('input, textarea').forEach(i => i.value = '');
+            listaItems = [];
+            renderTabla();
+            btn.disabled = false;
+            btn.innerText = "REGISTRAR PENDIENTE DE PAGO";
+        })
+        .withFailureHandler(err => {
+            alert("Error de conexión: " + err);
+            btn.disabled = false;
+            btn.innerText = "REGISTRAR PENDIENTE DE PAGO";
+        })
+        .guardarIR(data, currentUser);
+    }
+  </script>
+</body>
+</html>
