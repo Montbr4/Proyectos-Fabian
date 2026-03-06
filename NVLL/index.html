@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <meta name="referrer" content="no-referrer">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+  <style>
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    
+    .input-masha { border: none; border-bottom: 1px solid #e5e5e5; padding: 12px 0; width: 100%; outline: none; transition: border-color 0.3s; background: transparent; }
+    .input-masha:focus { border-bottom-color: #000; }
+
+    .input-search {
+        border: none;
+        background: transparent;
+        border-bottom: 1px solid transparent;
+        outline: none;
+        width: 120px;
+        transition: all 0.3s;
+        text-transform: uppercase;
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        font-weight: 700;
+    }
+    .input-search:focus {
+        border-bottom-color: #000;
+        width: 180px;
+    }
+    .input-search::placeholder {
+        color: #000;
+    }
+
+    .spinner { width: 24px; height: 24px; border: 3px solid #f3f3f3; border-top: 3px solid #000; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    
+    .modal-enter { animation: modalIn 0.3s ease-out forwards; }
+    @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    
+    .fade-up { animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    
+    .sortable-ghost { opacity: 0.2; background: #e5e5e5; }
+    .sortable-drag { cursor: grabbing; }
+
+    #filterMenu, #catOptions {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border: 1px solid #f3f3f3;
+    }
+  </style>
+</head>
+<body class="bg-white text-black relative">
+
+  <nav class="fixed top-0 w-full bg-white z-[60] py-6 md:py-8 flex justify-center items-center bg-opacity-95 backdrop-blur-sm transition-all border-b border-transparent hover:border-gray-50">
+    
+    <div class="absolute left-6 top-1/2 -translate-y-1/2 flex gap-2 items-center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-black"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="searchInput" placeholder="BUSCAR" class="input-search" onkeyup="filtrarBusqueda(this)">
+    </div>
+
+    <div class="font-black text-4xl md:text-6xl tracking-tighter select-none">NVLL</div>
+    
+    <div class="absolute right-6 top-1/2 -translate-y-1/2 flex gap-4 items-center">
+      <button id="btnCats" onclick="abrirModalCats()" class="hidden text-[10px] md:text-xs uppercase tracking-widest text-gray-500 hover:text-black transition-colors">CATEGORÍAS</button>
+      <button id="btnAdd" onclick="abrirModal()" class="hidden text-[10px] md:text-xs uppercase tracking-widest font-bold border-b border-transparent hover:border-black">+ NEW</button>
+      <button id="btnLogin" onclick="toggleLogin()" class="hidden text-[10px] md:text-xs uppercase tracking-widest text-gray-400 hover:text-black transition-colors">LOGIN</button>
+    </div>
+  </nav>
+
+  <div id="btnSaveOrder" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[80] hidden fade-up flex gap-2">
+    <button onclick="guardarOrden()" class="bg-black text-white py-3 px-8 text-xs tracking-[0.2em] font-bold uppercase shadow-2xl hover:bg-gray-800 transition transform hover:scale-105">
+      GUARDAR NUEVO ORDEN
+    </button>
+    <button onclick="cancelarOrden()" class="bg-white text-black border border-black py-3 px-4 text-xs tracking-widest font-bold uppercase shadow-xl hover:bg-red-500 hover:text-white hover:border-red-500 transition transform hover:scale-105">
+      X
+    </button>
+  </div>
+
+  <main class="pt-40 px-6 pb-20 min-h-screen">
+    <div id="loader" class="flex flex-col items-center justify-center mt-10">
+        <div class="spinner mb-4"></div>
+        <p class="text-[10px] tracking-widest text-gray-400 animate-pulse">CARGANDO...</p>
+    </div>
+    <div id="errorDisplay" class="hidden text-center mt-10 text-red-600 text-xs font-bold tracking-widest"></div>
+    
+    <div id="filterContainer" class="flex justify-end mb-8 max-w-[1600px] mx-auto opacity-0 transition-opacity duration-500">
+        <div class="relative group">
+            <button onclick="toggleFilterMenu()" class="text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2 hover:text-gray-600 transition select-none">
+                <span id="currentFilterLabel">GENERAL</span>
+                <span class="text-[10px] mt-0.5">▾</span>
+            </button>
+            <div id="filterMenu" class="absolute top-full right-0 mt-2 bg-white min-w-[180px] flex flex-col hidden py-1 z-50">
+                </div>
+        </div>
+    </div>
+
+    <div id="catalogContainer" class="max-w-[1600px] mx-auto opacity-0 transition-opacity duration-500 flex flex-col gap-20"></div>
+  </main>
+
+  <div id="modalDetail" class="fixed inset-0 z-[90] hidden">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity" onclick="cerrarDetalle()"></div>
+    <div class="absolute inset-0 flex justify-center items-center pointer-events-none p-4">
+      <div class="bg-white w-full max-w-4xl max-h-[90vh] h-[80vh] md:h-auto overflow-hidden pointer-events-auto shadow-2xl flex flex-col md:flex-row modal-enter">
+        <button onclick="cerrarDetalle()" class="absolute top-4 right-4 z-20 md:hidden text-2xl bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-sm">×</button>
+        <div class="w-full md:w-1/2 h-1/2 md:h-auto bg-gray-50 flex items-center justify-center p-4">
+             <img id="detailImg" class="w-full h-full object-contain mix-blend-multiply" referrerpolicy="no-referrer">
+        </div>
+        <div class="w-full md:w-1/2 p-8 md:p-12 flex flex-col relative bg-white h-1/2 md:h-auto overflow-y-auto">
+            <button onclick="cerrarDetalle()" class="hidden md:block absolute top-6 right-6 text-3xl font-light hover:rotate-90 transition origin-center">×</button>
+            <div class="flex-grow">
+                <h2 id="detailName" class="text-2xl md:text-3xl font-bold uppercase tracking-wide mb-2 leading-none"></h2>
+                <p id="detailPrice" class="text-xl md:text-2xl font-medium mb-8 text-gray-800"></p>
+                <div class="h-px w-10 bg-black mb-8"></div>
+                <p class="text-[10px] uppercase text-gray-400 tracking-widest mb-2">Descripción</p>
+                <p id="detailDesc" class="text-sm text-gray-600 leading-relaxed whitespace-pre-line font-light"></p>
+            </div>
+            <div class="mt-10">
+                <button id="btnAction" onclick="cerrarDetalle()" class="w-full bg-black text-white py-4 text-xs tracking-[0.2em] font-bold uppercase hover:bg-gray-800 transition disabled:bg-gray-300 disabled:cursor-not-allowed">SEGUIR VIENDO</button>
+                <p id="txtAvailability" class="text-[9px] text-center text-gray-400 mt-3 uppercase tracking-widest"></p>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalLogin" class="fixed inset-0 bg-white/95 z-[60] hidden flex justify-center items-center">
+    <div class="w-72 flex flex-col gap-6">
+      <h2 class="text-xs font-bold tracking-[0.2em] mb-2 text-center">ACCESS</h2>
+      <input type="email" id="userEmail" placeholder="E-MAIL" class="input-masha text-sm uppercase" onkeydown="if(event.key === 'Enter') doLogin()">
+      <input type="password" id="userPass" placeholder="PASSWORD" class="input-masha text-sm uppercase" onkeydown="if(event.key === 'Enter') doLogin()">
+      <button onclick="doLogin()" class="bg-black text-white py-4 text-xs tracking-widest mt-4 hover:bg-gray-900 transition shadow-lg">ENTRAR</button>
+      <button onclick="cerrarLogin()" class="text-[10px] tracking-widest text-gray-400 mt-2 hover:text-black text-center">CANCELAR</button>
+    </div>
+  </div>
+
+  <div id="modalCats" class="fixed inset-0 bg-white z-[70] hidden flex flex-col p-8 overflow-y-auto animate-fade-in">
+    <div class="flex justify-between items-center mb-8 max-w-lg mx-auto w-full">
+      <h2 class="text-xl font-bold tracking-tight">CATEGORÍAS</h2>
+      <button onclick="cerrarModalCats()" class="text-3xl font-light hover:rotate-90 transition">×</button>
+    </div>
+    <div class="max-w-lg mx-auto w-full flex flex-col gap-6">
+      <div class="flex gap-2">
+        <input type="text" id="newCatName" class="input-masha text-lg uppercase" placeholder="NUEVA CATEGORÍA" onkeydown="if(event.key === 'Enter') agregarCat()">
+        <button onclick="agregarCat()" class="bg-black text-white px-6 text-xs font-bold uppercase hover:bg-gray-800 tracking-widest">AÑADIR</button>
+      </div>
+      <div id="catListContainer" class="flex flex-col gap-4 mt-4"></div>
+    </div>
+  </div>
+
+  <div id="modalAdd" class="fixed inset-0 bg-white z-[70] hidden flex flex-col p-8 overflow-y-auto animate-fade-in">
+    <div class="flex justify-between items-center mb-8 max-w-lg mx-auto w-full">
+      <h2 id="modalTitle" class="text-xl font-bold tracking-tight">NUEVO ARTÍCULO</h2>
+      <button onclick="cerrarModal()" class="text-3xl font-light hover:rotate-90 transition">×</button>
+    </div>
+    <div class="max-w-lg mx-auto w-full flex flex-col gap-6">
+      <input type="hidden" id="editId">
+      <input type="hidden" id="currentImgUrl">
+      
+      <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-[10px] uppercase text-gray-400 tracking-widest">Nombre</label>
+            <input type="text" id="prodName" class="input-masha text-lg uppercase font-medium" placeholder="Ej: JABÓN" onkeydown="if(event.key === 'Enter') guardar()">
+          </div>
+          <div>
+            <label class="text-[10px] uppercase text-gray-400 tracking-widest">Categoría</label>
+            
+            <div class="relative w-full" id="customCatWrapper">
+                <input type="hidden" id="prodCat">
+                <div id="catTrigger" class="input-masha text-lg font-medium cursor-pointer flex justify-between items-center" onclick="toggleCustomSelect()">
+                    <span id="catDisplay">SELECCIONAR</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div id="catOptions" class="absolute top-full left-0 w-full bg-white hidden z-50 max-h-48 overflow-y-auto flex flex-col shadow-xl border border-gray-100 mt-1">
+                    </div>
+            </div>
+
+          </div>
+      </div>
+
+      <div>
+        <label class="text-[10px] uppercase text-gray-400 tracking-widest">Descripción</label>
+        <textarea id="prodDesc" rows="3" class="input-masha text-sm text-gray-600 resize-none" placeholder="Detalles..."></textarea>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-[10px] uppercase text-gray-400 tracking-widest">Precio</label>
+            <div class="flex items-center border-b border-[#e5e5e5] focus-within:border-black transition-colors">
+              <span class="text-lg mr-2">S/.</span>
+              <input type="number" step="0.01" id="prodPrice" class="w-full py-3 outline-none text-lg" placeholder="0.00" onkeydown="if(event.key === 'Enter') guardar()">
+            </div>
+          </div>
+      </div>
+
+      <div class="flex flex-col gap-2 border-t border-gray-100 pt-4">
+          <div class="flex items-center gap-3">
+            <input type="checkbox" id="prodSoldOut" class="w-4 h-4 accent-black cursor-pointer">
+            <label for="prodSoldOut" class="text-xs uppercase tracking-widest cursor-pointer font-bold text-gray-800">AGOTADO</label>
+          </div>
+          <div class="flex items-center gap-3 mt-2">
+            <input type="checkbox" id="prodHidden" class="w-4 h-4 accent-red-600 cursor-pointer">
+            <label for="prodHidden" class="text-xs uppercase tracking-widest cursor-pointer font-bold text-red-600">OCULTAR</label>
+          </div>
+      </div>
+
+      <div>
+        <label class="text-[10px] uppercase text-gray-400 tracking-widest mb-1 block">Fotografía</label>
+        <div id="uploadContainer">
+            <label class="flex flex-col items-center justify-center w-full h-32 border border-gray-200 border-dashed cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                    <span class="text-[10px] text-gray-400 uppercase tracking-widest">Seleccionar Imagen</span>
+                    <span class="text-xl text-gray-300">+</span>
+                </div>
+                <input id="prodFile" type="file" class="hidden" accept="image/*" onchange="previewImage(this)" />
+            </label>
+        </div>
+        <div id="previewContainer" class="mt-2 w-full aspect-square overflow-hidden hidden shadow-sm border border-gray-100 relative group">
+             <img id="preview" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+             <button onclick="quitarImagen()" class="absolute top-2 right-2 bg-white text-black text-[10px] font-bold px-3 py-1 uppercase tracking-widest shadow-md hover:bg-red-600 hover:text-white transition">Quitar</button>
+        </div>
+      </div>
+      <button id="btnSave" onclick="guardar()" class="bg-black text-white py-4 text-xs tracking-[0.15em] mt-2 disabled:bg-gray-400 transition hover:bg-gray-800">GUARDAR PRODUCTO</button>
+    </div>
+  </div>
+
+  <script>
+    let isAdmin = false;
+    let allProducts = []; 
+    let allCategories = [];
+    let isOrderChanged = false;
+    let sortables = [];
+    let currentFilter = 'GENERAL';
+
+    window.onload = () => {
+      cargarDatos();
+      checkAdminUrl();
+      
+      document.addEventListener('click', function(e) {
+          const wrapper = document.getElementById('customCatWrapper');
+          const options = document.getElementById('catOptions');
+          const filterCont = document.getElementById('filterContainer');
+          const filterMenu = document.getElementById('filterMenu');
+
+          if (wrapper && !wrapper.contains(e.target)) {
+              options.classList.add('hidden');
+          }
+          if (filterCont && !filterCont.contains(e.target)) {
+              filterMenu.classList.add('hidden');
+          }
+      });
+    };
+
+    function checkAdminUrl() {
+      google.script.url.getLocation(function(location) {
+        if (location.parameter.v === 'mashanico') {
+          document.getElementById('btnLogin').classList.remove('hidden');
+        }
+      });
+    }
+
+    function checkUnsavedChanges() {
+        if (isOrderChanged) {
+            alert("⚠ TIENES CAMBIOS EN EL ORDEN PENDIENTES.\n\nPor favor, GUARDA o CANCELA (X) el nuevo orden antes de continuar.");
+            return true;
+        }
+        return false;
+    }
+
+    function cargarDatos() { 
+        document.getElementById('loader').style.display = 'flex';
+        document.getElementById('errorDisplay').classList.add('hidden');
+        document.getElementById('filterContainer').classList.remove('opacity-100');
+        
+        isOrderChanged = false;
+        document.getElementById('btnSaveOrder').classList.add('hidden');
+
+        google.script.run.withSuccessHandler((cats) => {
+            allCategories = cats;
+            if(!allCategories.includes('GENERAL')) allCategories.unshift('GENERAL');
+            renderCatsInSelect();
+            renderCatsInManager();
+            
+            google.script.run
+                .withSuccessHandler(renderGrid)
+                .withFailureHandler((err) => {
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('errorDisplay').innerText = "ERROR DE CONEXIÓN.";
+                    document.getElementById('errorDisplay').classList.remove('hidden');
+                })
+                .obtenerProductos(); 
+
+        }).obtenerCategorias();
+    }
+
+    function getSafeUrl(val) {
+        if(!val) return 'https://via.placeholder.com/300?text=SIN+IMAGEN';
+        if(val.toString().includes('http')) return val;
+        return 'https://lh3.googleusercontent.com/d/' + val;
+    }
+
+    function guardarOrden() {
+        const btn = document.querySelector('#btnSaveOrder button:first-child');
+        const prevText = btn.innerText;
+        btn.innerText = "GUARDANDO...";
+        btn.disabled = true;
+
+        const productElements = document.querySelectorAll('.product-card-item');
+        const listaIds = Array.from(productElements).map(el => el.getAttribute('data-id'));
+
+        google.script.run
+            .withSuccessHandler(() => { 
+                btn.innerText = prevText;
+                btn.disabled = false;
+                cargarDatos(); 
+            })
+            .withFailureHandler(() => {
+                alert("Error de red");
+                btn.innerText = prevText;
+                btn.disabled = false;
+            })
+            .guardarOrdenMasivo(listaIds);
+    }
+
+    function cancelarOrden() {
+      if(confirm('¿Descartar los cambios en el orden?')) {
+        cargarDatos();
+      }
+    }
+
+    function filtrarBusqueda(input) {
+        const term = input.value.toLowerCase().trim();
+        
+        if (term.length > 0) {
+            const filtered = allProducts.filter(p => 
+                (p.nombre && p.nombre.toLowerCase().includes(term)) ||
+                (p.descripcion && p.descripcion.toLowerCase().includes(term))
+            );
+            renderGrid(filtered, true, true);
+        } else {
+            filtrarVista(currentFilter);
+        }
+    }
+
+    function toggleFilterMenu() {
+        if(checkUnsavedChanges()) return;
+        const menu = document.getElementById('filterMenu');
+        menu.classList.toggle('hidden');
+    }
+
+    function filtrarVista(catNombre) {
+        document.getElementById('searchInput').value = '';
+        
+        currentFilter = catNombre;
+        document.getElementById('currentFilterLabel').innerText = catNombre;
+        document.getElementById('filterMenu').classList.add('hidden');
+        renderGrid(allProducts, true); 
+    }
+
+    function renderGrid(productos, localRender = false, isSearchMode = false) {
+      if (!localRender) allProducts = productos;
+      const container = document.getElementById('catalogContainer');
+      const filterMenu = document.getElementById('filterMenu');
+      
+      document.getElementById('loader').style.display = 'none';
+      container.innerHTML = '';
+      container.classList.remove('opacity-0');
+      document.getElementById('filterContainer').classList.add('opacity-100');
+
+      sortables.forEach(s => s.destroy());
+      sortables = [];
+
+      if (!productos || productos.length === 0) {
+        container.innerHTML = '<div class="text-center text-xs text-gray-400 mt-24 tracking-widest uppercase">No hay productos disponibles</div>';
+        return;
+      }
+
+      filterMenu.innerHTML = `<button class="text-[10px] uppercase tracking-widest py-3 px-6 hover:bg-gray-50 text-left w-full transition-colors font-bold" onclick="filtrarVista('GENERAL')">GENERAL</button>`;
+      
+      const groupedAll = {};
+      allCategories.forEach(c => groupedAll[c] = []);
+      if(!groupedAll['GENERAL']) groupedAll['GENERAL'] = [];
+      
+      allProducts.forEach(p => {
+        let cat = p.categoria ? p.categoria.toUpperCase() : 'GENERAL';
+        if (!groupedAll[cat]) cat = 'GENERAL';
+        groupedAll[cat].push(p);
+      });
+
+      const catsConProds = Object.keys(groupedAll).filter(c => groupedAll[c].length > 0 && c !== 'GENERAL');
+      catsConProds.forEach(cat => {
+          const btn = document.createElement('button');
+          btn.className = "text-[10px] uppercase tracking-widest py-3 px-6 hover:bg-gray-50 text-left w-full transition-colors";
+          btn.innerText = cat;
+          btn.onclick = () => filtrarVista(cat);
+          filterMenu.appendChild(btn);
+      });
+
+      const groupedRender = {};
+      allCategories.forEach(c => groupedRender[c] = []);
+      if(!groupedRender['GENERAL']) groupedRender['GENERAL'] = [];
+      
+      productos.forEach(p => {
+        let cat = p.categoria ? p.categoria.toUpperCase() : 'GENERAL';
+        if (!groupedRender[cat]) cat = 'GENERAL';
+        groupedRender[cat].push(p);
+      });
+
+      let catsToRender = [];
+
+      if (isSearchMode) {
+          catsToRender = Object.keys(groupedRender).filter(c => groupedRender[c].length > 0);
+      } else {
+          if (currentFilter === 'GENERAL') {
+              catsToRender = Object.keys(groupedRender).filter(c => groupedRender[c].length > 0 && c !== 'GENERAL');
+              if(groupedRender['GENERAL'].length > 0) catsToRender.push('GENERAL'); 
+          } else {
+              if (groupedRender[currentFilter] && groupedRender[currentFilter].length > 0) {
+                  catsToRender = [currentFilter];
+              }
+          }
+      }
+
+      catsToRender.forEach(catName => {
+        const section = document.createElement('div');
+        section.className = 'flex flex-col gap-8 mb-16';
+        section.id = 'section-' + catName.replace(/\s+/g, '');
+
+        const title = document.createElement('h2');
+        title.className = 'text-xl font-bold tracking-[0.2em] uppercase text-center md:text-left mb-6';
+        title.innerText = catName;
+        section.appendChild(title);
+
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-16 sortable-list';
+        grid.id = 'cat-' + catName.replace(/\s+/g, '');
+
+        groupedRender[catName].forEach(p => {
+            if (!isAdmin && p.oculto) return;
+
+            p.imagen = getSafeUrl(p.imagen);
+            const item = document.createElement('div');
+            item.className = 'product-card-item group relative flex flex-col gap-3 cursor-pointer';
+            item.setAttribute('data-id', p.id);
+            item.setAttribute('onclick', `verDetalle(${p.id})`);
+            
+            let adminBtns = '';
+            let hiddenBadge = '';
+
+            if (isAdmin) {
+              item.classList.add('cursor-move');
+              if (p.oculto) {
+                  hiddenBadge = `<div class="absolute top-0 left-0 bg-red-600 text-white text-[9px] font-bold px-2 py-1 z-30 uppercase tracking-widest">OCULTO</div>`;
+                  item.classList.add('opacity-75');
+              }
+
+              adminBtns = `
+                <div class="absolute top-2 right-2 z-30 flex gap-2 pointer-events-auto">
+                  <button onclick="event.stopPropagation(); editar(${p.id})" class="bg-white text-black w-8 h-8 flex items-center justify-center text-xs shadow-md hover:bg-black hover:text-white transition">✎</button>
+                  <button onclick="event.stopPropagation(); borrar(${p.id})" class="bg-white text-black w-8 h-8 flex items-center justify-center text-sm shadow-md hover:bg-red-600 hover:text-white transition">×</button>
+                </div>`;
+            }
+
+            const soldOutBadge = p.agotado ? 
+              `<div class="absolute inset-0 flex items-center justify-center pointer-events-none bg-white/30 z-10"><span class="bg-black text-white text-[10px] px-3 py-1 tracking-[0.2em] font-bold shadow-lg">SOLD OUT</span></div>` : '';
+
+            const textColorClass = p.agotado ? 'text-gray-400' : 'text-black';
+            const safeName = p.nombre || 'Sin nombre';
+            const safePrice = p.precio || '0.00';
+
+            item.innerHTML = `
+              <div class="relative w-full aspect-square overflow-hidden bg-gray-100 mb-1">
+                <img src="${p.imagen}" alt="Producto" loading="lazy" referrerpolicy="no-referrer" 
+                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out ${p.agotado ? 'grayscale' : ''}"
+                     onerror="this.src='https://via.placeholder.com/300?text=ERROR';">
+                ${soldOutBadge}
+                ${hiddenBadge}
+                ${adminBtns}
+              </div>
+              <div class="relative z-20 flex flex-col gap-1 mt-2">
+                <div class="flex justify-between items-start gap-4">
+                  <span class="text-sm font-bold uppercase tracking-wide leading-tight ${textColorClass}" style="color: ${p.agotado ? '#9ca3af' : '#000000'} !important;">${safeName}</span>
+                  <span class="text-sm font-medium whitespace-nowrap ${textColorClass}" style="color: ${p.agotado ? '#9ca3af' : '#000000'} !important;">S/. ${safePrice}</span>
+                </div>
+              </div>`;
+            grid.appendChild(item);
+        });
+
+        if (grid.children.length > 0) {
+            section.appendChild(grid);
+            container.appendChild(section);
+
+            if(isAdmin && !isSearchMode) {
+                const sortable = new Sortable(grid, {
+                    group: catName,
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    onEnd: function (evt) {
+                        isOrderChanged = true;
+                        document.getElementById('btnSaveOrder').classList.remove('hidden');
+                    }
+                });
+                sortables.push(sortable);
+            }
+        }
+      });
+    }
+
+    function abrirModalCats() {
+      if(checkUnsavedChanges()) return;
+      document.getElementById('modalCats').classList.remove('hidden');
+      renderCatsInManager();
+    }
+    function cerrarModalCats() { document.getElementById('modalCats').classList.add('hidden'); }
+
+    function toggleCustomSelect() {
+        document.getElementById('catOptions').classList.toggle('hidden');
+    }
+
+    function selectOption(val) {
+        document.getElementById('prodCat').value = val;
+        document.getElementById('catDisplay').innerText = val;
+        document.getElementById('catOptions').classList.add('hidden');
+    }
+
+    function renderCatsInSelect() {
+        const listContainer = document.getElementById('catOptions');
+        listContainer.innerHTML = '';
+        
+        allCategories.forEach(cat => {
+            if(cat !== 'GENERAL') {
+                const item = document.createElement('div');
+                item.className = 'py-3 px-4 hover:bg-gray-50 cursor-pointer text-sm font-medium uppercase tracking-wide transition-colors';
+                item.innerText = cat;
+                item.onclick = () => selectOption(cat);
+                listContainer.appendChild(item);
+            }
+        });
+    }
+
+    function renderCatsInManager() {
+      const div = document.getElementById('catListContainer');
+      div.innerHTML = '';
+      allCategories.forEach(cat => {
+        if(cat === 'GENERAL') return;
+        const row = document.createElement('div');
+        row.className = 'flex justify-between items-center border-b border-gray-100 py-2';
+        row.innerHTML = `
+          <span class="text-lg font-medium">${cat}</span>
+          <button onclick="borrarCat('${cat}')" class="text-xs font-bold text-red-500 hover:text-red-700 uppercase tracking-widest">Borrar</button>
+        `;
+        div.appendChild(row);
+      });
+    }
+
+    function agregarCat() {
+      const input = document.getElementById('newCatName');
+      const val = input.value.trim().toUpperCase();
+      if(!val) return;
+      google.script.run.withSuccessHandler((cats) => {
+        allCategories = cats;
+        if(!allCategories.includes('GENERAL')) allCategories.unshift('GENERAL');
+        renderCatsInSelect();
+        renderCatsInManager();
+        input.value = '';
+      }).guardarCategoria(val);
+    }
+
+    function borrarCat(nombre) {
+      if(!confirm('¿Borrar categoría?')) return;
+      google.script.run.withSuccessHandler((cats) => {
+        allCategories = cats;
+        if(!allCategories.includes('GENERAL')) allCategories.unshift('GENERAL');
+        renderCatsInSelect();
+        renderCatsInManager();
+      }).eliminarCategoria(nombre);
+    }
+
+    function verDetalle(id) {
+      if(checkUnsavedChanges()) return;
+      const p = allProducts.find(item => item.id == id);
+      if(!p) return;
+
+      document.getElementById('detailImg').src = p.imagen;
+      document.getElementById('detailName').innerText = p.nombre;
+      document.getElementById('detailPrice').innerText = 'S/. ' + p.precio;
+      document.getElementById('detailDesc').innerText = p.descripcion || "Sin descripción detallada.";
+
+      const btnAction = document.getElementById('btnAction');
+      const txtAvail = document.getElementById('txtAvailability');
+
+      if (p.agotado) {
+        btnAction.innerText = "AGOTADO / SOLD OUT";
+        btnAction.disabled = true; 
+        btnAction.onclick = null;
+        txtAvail.innerText = "NO DISPONIBLE POR EL MOMENTO";
+        txtAvail.classList.add('text-red-500');
+      } else {
+        btnAction.innerText = "SEGUIR VIENDO";
+        btnAction.disabled = false; 
+        btnAction.onclick = cerrarDetalle;
+        txtAvail.innerText = "";
+        txtAvail.classList.remove('text-red-500');
+      }
+
+      document.getElementById('modalDetail').classList.remove('hidden');
+      document.body.style.overflow = 'hidden'; 
+    }
+
+    function cerrarDetalle() {
+      document.getElementById('modalDetail').classList.add('hidden');
+      document.body.style.overflow = ''; 
+    }
+
+    function toggleLogin() {
+      if(isAdmin) {
+        isAdmin = false;
+        document.getElementById('btnLogin').innerText = 'LOGIN';
+        document.getElementById('btnAdd').classList.add('hidden');
+        document.getElementById('btnCats').classList.add('hidden');
+        document.getElementById('btnSaveOrder').classList.add('hidden');
+        isOrderChanged = false;
+        cargarDatos();
+      } else { 
+        document.getElementById('modalLogin').classList.remove('hidden'); 
+        setTimeout(() => document.getElementById('userEmail').focus(), 100);
+      }
+    }
+
+    function cerrarLogin() { document.getElementById('modalLogin').classList.add('hidden'); }
+
+    function doLogin() {
+      const email = document.getElementById('userEmail').value.trim().toLowerCase();
+      const pass = document.getElementById('userPass').value.trim().toLowerCase();
+
+      if (email === 'masha@nico.com' && pass === 'nico') {
+        isAdmin = true;
+        document.getElementById('modalLogin').classList.add('hidden');
+        document.getElementById('btnLogin').innerText = 'LOGOUT';
+        document.getElementById('btnAdd').classList.remove('hidden');
+        document.getElementById('btnCats').classList.remove('hidden');
+        document.getElementById('userEmail').value = ''; document.getElementById('userPass').value = '';
+        cargarDatos();
+      } else { alert('Credenciales incorrectas'); }
+    }
+
+    function abrirModal(modoEdicion = false) { 
+      if(checkUnsavedChanges()) return;
+      document.getElementById('modalAdd').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      
+      if (!modoEdicion) {
+        document.getElementById('modalTitle').innerText = 'NUEVO ARTÍCULO';
+        document.getElementById('btnSave').innerText = 'GUARDAR PRODUCTO';
+        limpiarFormulario();
+      }
+      setTimeout(() => document.getElementById('prodName').focus(), 100);
+    }
+
+    function editar(id) {
+      if(checkUnsavedChanges()) return;
+      const prod = allProducts.find(p => p.id == id);
+      if(!prod) return;
+
+      abrirModal(true); 
+
+      document.getElementById('modalTitle').innerText = 'EDITAR ARTÍCULO #' + prod.id;
+      document.getElementById('btnSave').innerText = 'ACTUALIZAR CAMBIOS';
+      
+      document.getElementById('editId').value = prod.id;
+      document.getElementById('currentImgUrl').value = prod.imagen;
+      document.getElementById('prodName').value = prod.nombre;
+      document.getElementById('prodDesc').value = prod.descripcion;
+      document.getElementById('prodPrice').value = prod.precio;
+      
+      const catVal = (prod.categoria === 'GENERAL' || !prod.categoria) ? '' : prod.categoria;
+      if(catVal) {
+          selectOption(catVal);
+      } else {
+          document.getElementById('prodCat').value = '';
+          document.getElementById('catDisplay').innerText = 'SELECCIONAR';
+      }
+
+      document.getElementById('prodSoldOut').checked = !!prod.agotado;
+      document.getElementById('prodHidden').checked = !!prod.oculto;
+
+      document.getElementById('preview').src = prod.imagen;
+      document.getElementById('previewContainer').classList.remove('hidden');
+      document.getElementById('uploadContainer').classList.add('hidden');
+    }
+    
+    function cerrarModal() { 
+      document.getElementById('modalAdd').classList.add('hidden'); 
+      document.body.style.overflow = '';
+      limpiarFormulario();
+    }
+
+    function quitarImagen() {
+      document.getElementById('prodFile').value = '';
+      document.getElementById('previewContainer').classList.add('hidden');
+      document.getElementById('uploadContainer').classList.remove('hidden');
+    }
+
+    function limpiarFormulario() {
+      document.getElementById('editId').value = '';
+      document.getElementById('currentImgUrl').value = '';
+      document.getElementById('prodName').value = '';
+      document.getElementById('prodDesc').value = ''; 
+      document.getElementById('prodPrice').value = '';
+      document.getElementById('prodFile').value = ''; 
+      
+      document.getElementById('prodCat').value = '';
+      document.getElementById('catDisplay').innerText = 'SELECCIONAR';
+      
+      document.getElementById('prodSoldOut').checked = false;
+      document.getElementById('prodHidden').checked = false;
+      document.getElementById('previewContainer').classList.add('hidden');
+      document.getElementById('uploadContainer').classList.remove('hidden');
+    }
+
+    function previewImage(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('preview').src = e.target.result;
+          document.getElementById('previewContainer').classList.remove('hidden');
+          document.getElementById('uploadContainer').classList.add('hidden');
+        }
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function guardar() {
+      const id = document.getElementById('editId').value;
+      const nombre = document.getElementById('prodName').value;
+      const desc = document.getElementById('prodDesc').value;
+      const precio = document.getElementById('prodPrice').value;
+      const cat = document.getElementById('prodCat').value;
+      const fileInput = document.getElementById('prodFile');
+      let currentUrl = document.getElementById('currentImgUrl').value;
+      const soldOut = document.getElementById('prodSoldOut').checked;
+      const hidden = document.getElementById('prodHidden').checked;
+
+      const hayFoto = fileInput.files.length > 0 || (id && currentUrl && document.getElementById('uploadContainer').classList.contains('hidden'));
+
+      if(!nombre || !precio || !hayFoto || !cat) {
+        alert('Faltan datos (Nombre, Precio, Categoría o Foto).');
+        return;
+      }
+
+      const btn = document.getElementById('btnSave');
+      btn.innerText = 'PROCESANDO...';
+      btn.disabled = true;
+
+      const enviarDatos = (base64 = null) => {
+        const payload = {
+          id: id || null,
+          nombre: nombre,
+          descripcion: desc, 
+          precio: precio,
+          categoria: cat,
+          imagenBase64: base64,
+          imagenActual: currentUrl,
+          agotado: soldOut,
+          oculto: hidden
+        };
+
+        google.script.run
+            .withSuccessHandler((res) => {
+                btn.innerText = id ? 'ACTUALIZAR CAMBIOS' : 'GUARDAR PRODUCTO';
+                btn.disabled = false;
+                if(res.success) {
+                    cerrarModal();
+                    cargarDatos();
+                } else {
+                    alert('Error: ' + res.error);
+                }
+            })
+            .withFailureHandler((err) => {
+               alert("Error de red");
+               btn.disabled = false;
+            })
+            .procesarProducto(payload);
+      };
+
+      if (fileInput.files.length > 0) {
+        const reader = new FileReader();
+        reader.onload = function(e) { enviarDatos(e.target.result); };
+        reader.readAsDataURL(fileInput.files[0]);
+      } else {
+        enviarDatos(null);
+      }
+    }
+
+    function borrar(id) {
+      if(checkUnsavedChanges()) return;
+      if(confirm('¿Eliminar producto?')) {
+        google.script.run.withSuccessHandler((res) => { 
+            if(res.success) cargarDatos(); 
+        }).borrarProducto(id);
+      }
+    }
+  </script>
+</body>
+</html>
