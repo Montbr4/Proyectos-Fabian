@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <style>
+      :root { --primary: #2E86AB; --primary-dark: #1c5f7b; --bg: #f0f2f5; --white: #ffffff; --text: #333; --accent: #ff6b6b; --gold: #f1c40f; }
+      body { font-family: 'Poppins', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); min-height: 100vh; box-sizing: border-box; }
+      
+      .nav-floating { position: fixed; top: 20px; z-index: 100; display: flex; gap: 10px; }
+      .nav-floating.left { left: 20px; }
+      .nav-floating.right { right: 20px; }
+      
+      .nav-btn-float { 
+          background: #000; 
+          color: white; 
+          padding: 10px 20px; 
+          border-radius: 30px; 
+          text-decoration: none; 
+          font-size: 0.9rem; 
+          font-weight: 700; 
+          box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+          transition: all 0.3s ease; 
+          
+          opacity: 0.5; 
+          pointer-events: none; 
+          cursor: wait; 
+      }
+
+      .nav-btn-float.active {
+          opacity: 1; 
+          pointer-events: auto; 
+          cursor: pointer;
+      }
+
+      .nav-btn-float.active:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.3); }
+      .nav-btn-float.accent.active { background: var(--primary); }
+      .nav-btn-float.home.active { background: #333; }
+      
+      .container { display: grid; grid-template-columns: 1.5fr 1fr; gap: 25px; max-width: 1400px; margin: 0 auto; padding-top: 40px; }
+      .card { background: var(--white); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.02); }
+      h2 { color: var(--primary); margin: 0 0 25px 0; padding-bottom: 15px; border-bottom: 2px solid rgba(46, 134, 171, 0.1); font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px; }
+      
+      .form-group { margin-bottom: 20px; }
+      label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.85rem; color: #555; }
+      input, select { width: 100%; padding: 12px 15px; border: 1px solid #eee; border-radius: 10px; font-family: inherit; font-size: 0.95rem; background: #fafafa; transition: all 0.3s; box-sizing: border-box; }
+      input:focus, select:focus { border-color: var(--primary); background: #fff; outline: none; box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.1); }
+      
+      .add-area { background: #f8f9fa; padding: 20px; border-radius: 15px; border: 1px dashed #ddd; margin-bottom: 25px; }
+      .grid-add { display: grid; grid-template-columns: 2fr 1fr auto; gap: 15px; align-items: end; }
+      
+      .btn { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 12px; cursor: pointer; font-size: 1rem; font-weight: 700; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(46, 134, 171, 0.2); }
+      .btn:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(46, 134, 171, 0.3); }
+      .btn:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+      
+      .btn-add { background: var(--primary); width: 50px; height: 46px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 1px; }
+      
+      table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 0.95rem; }
+      th { text-align: left; color: #888; padding: 10px; font-weight: 600; font-size: 0.8rem; letter-spacing: 0.5px; border-bottom: 1px solid #eee; }
+      td { padding: 15px 10px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
+      
+      .btn-small { width: 28px; height: 28px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: #555; transition: all 0.2s; font-weight: bold; }
+      .btn-small:hover { border-color: var(--primary); color: var(--primary); background: #f0f8ff; }
+      
+      .new-prod-card { border-top: 5px solid var(--gold); }
+      .new-prod-card h2 { color: #d4ac0d; border-color: rgba(241, 196, 15, 0.2); }
+      .btn-create { background: #d4ac0d; box-shadow: 0 4px 15px rgba(212, 172, 13, 0.2); }
+      .btn-create:hover { background: #b7950b; box-shadow: 0 6px 20px rgba(212, 172, 13, 0.3); }
+
+      .anulacion-card { border-top: 5px solid var(--accent); margin-top: 25px; }
+      .anulacion-card h2 { color: var(--accent); border-color: rgba(255, 107, 107, 0.2); }
+      .btn-anular { background: var(--accent); box-shadow: 0 4px 15px rgba(255, 107, 107, 0.2); }
+      .btn-anular:hover { background: #e05a5a; box-shadow: 0 6px 20px rgba(255, 107, 107, 0.3); }
+
+      #divDestino { animation: slideDown 0.3s ease; }
+      @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+  </head>
+  <body>
+    <div class="nav-floating left">
+        <a id="homeLink" class="nav-btn-float home">🏠 MENÚ</a>
+    </div>
+
+    <div class="nav-floating right">
+        <a id="salesLink" class="nav-btn-float accent">💰 VENTA</a>
+    </div>
+
+    <div class="container">
+      <div class="card">
+        <h2>Movimientos de Stock</h2>
+        
+        <div class="form-group">
+            <label>Tipo de Movimiento</label>
+            <select id="tipoMov" onchange="verificarTipoMovimiento()">
+              <option value="INGRESO">📥 INGRESO (Suma Stock +)</option>
+              <option value="TRASLADO">🚚 TRASLADO (Resta Stock -)</option>
+              <option value="VENCIDO">📅 VENCIDO (Resta Stock -)</option>
+              <option value="ROTO">💔 ROTO (Resta Stock -)</option>
+            </select>
+        </div>
+          
+        <div class="form-group" id="divDestino" style="display:none;">
+            <label style="color:var(--primary);">Sede de Destino</label>
+            <select id="sedeDestino" style="border-color:var(--primary); background:#f0f8ff;"></select>
+        </div>
+
+        <div class="add-area">
+            <label style="margin-bottom:10px;">Agregar producto a la lista:</label>
+            <div style="margin-bottom:12px;">
+                <input type="text" id="buscadorMov" placeholder="🔍 Buscar producto..." onkeyup="filtrarProductosMov()">
+            </div>
+            <div class="grid-add">
+                <div style="margin:0;">
+                    <select id="productoMov"></select>
+                </div>
+                <div style="margin:0;">
+                    <input type="number" id="cantidadMov" min="1" placeholder="Cant." value="1">
+                </div>
+                <button type="button" class="btn btn-add" onclick="agregarALista()">+</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Lista de Movimientos:</label>
+            <table id="tablaMov">
+                <thead><tr><th width="60%">Producto</th><th width="30%">Cant.</th><th width="10%"></th></tr></thead>
+                <tbody id="bodyMov"></tbody>
+            </table>
+            <div id="emptyListMsg" style="text-align:center; color:#aaa; font-size:0.9rem; margin-bottom:20px;">Lista vacía</div>
+        </div>
+        
+        <button type="button" id="btnProcesar" class="btn" onclick="procesarLista()">PROCESAR MOVIMIENTOS</button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 25px;">
+          <div class="card new-prod-card">
+            <h2>Nuevo Producto</h2>
+            <form id="newProdForm">
+              <div class="form-group"><label>Nombre del Producto</label><input type="text" id="nombreNuevo" required placeholder="Ej: Paracetamol 500mg"></div>
+              <div class="form-group"><label>Stock Inicial</label><input type="number" id="stockInicial" min="1" required value="0"></div>
+              <div class="form-group"><label>Precio Venta (S/.)</label><input type="number" id="precioVenta" step="0.01" required placeholder="0.00"></div>
+              
+              <div class="form-group"><label style="color:#666;">Precio Costo (Opcional)</label><input type="number" id="precioCosto" step="0.01" placeholder="0.00"></div>
+              
+              <button type="button" id="btnCrear" class="btn btn-create" onclick="crearProd()">CREAR PRODUCTO</button>
+            </form>
+          </div>
+
+          <div class="card anulacion-card">
+            <h2>Anular Movimientos</h2>
+            
+            <div class="form-group">
+                <label style="color:var(--accent);">Tipo de Corrección:</label>
+                <select id="tipoAnulacion" style="border-color:var(--accent);">
+                    <option value="RESTAURAR">Anular Salidas (Suma Stock +)</option>
+                    <option value="ELIMINAR">Anular Ingresos (Resta Stock -)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Motivo (Obligatorio)</label>
+                <input type="text" id="motivoAnulacion" placeholder="Detallar Motivo y Responsable" style="border-color:var(--accent);">
+            </div>
+            
+            <div class="add-area" style="background:#fff5f5; border-color:#ffcccc;">
+                 <div style="margin-bottom:12px;">
+                    <input type="text" id="buscadorAnul" placeholder="🔍 Buscar..." onkeyup="filtrarAnulacion()">
+                </div>
+                <div class="grid-add">
+                    <div style="margin:0;">
+                        <select id="productoAnul"></select>
+                    </div>
+                    <div style="margin:0;">
+                        <input type="number" id="cantAnul" min="1" placeholder="Cant." value="1">
+                    </div>
+                    <button type="button" class="btn btn-add" style="background:var(--accent);" onclick="agregarAnulacionList()">+</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <table id="tablaAnulacion">
+                    <thead><tr><th width="60%">Producto</th><th width="30%">Cant.</th><th width="10%"></th></tr></thead>
+                    <tbody id="bodyAnulacion"></tbody>
+                </table>
+                 <div id="emptyListAnul" style="text-align:center; color:#aaa; font-size:0.9rem; margin-bottom:20px;">Lista vacía</div>
+            </div>
+
+            <button type="button" id="btnAnular" class="btn btn-anular" onclick="procesarListaAnulacion()">CONFIRMAR CORRECCIÓN</button>
+          </div>
+      </div>
+    </div>
+
+    <script>
+      let currentSede = "<?= sede ?>";
+      let currentUser = "<?= usuario ?>";
+      
+      let listaMovimientos = [];
+      let inventarioMov = [];
+      let listaAnulacion = [];
+
+      function init() {
+        google.script.run.withSuccessHandler(url => {
+            const salesLink = document.getElementById('salesLink');
+            const homeLink = document.getElementById('homeLink');
+            
+            salesLink.href = url + "?page=ventas&sede=" + currentSede + "&usuario=" + currentUser;
+            homeLink.href = url + "?page=inicio&usuario=" + currentUser;
+            
+            salesLink.classList.add('active');
+            homeLink.classList.add('active');
+        }).getUrl();
+        
+        cargarProds();
+        actualizarOpcionesDestino(); 
+        checkEmptyList();
+        renderTablaAnulacion();
+      }
+
+      function cargarProds() {
+        google.script.run.withSuccessHandler(p => {
+            inventarioMov = p;
+            renderOpcionesProducto(p, 'productoMov');
+            renderOpcionesProducto(p, 'productoAnul');
+        }).obtenerProductosInventario(currentSede);
+      }
+
+      function renderOpcionesProducto(lista, idSelect) {
+        let s = document.getElementById(idSelect); 
+        s.innerHTML = '';
+        lista.forEach(x => { 
+            let o = document.createElement('option'); 
+            o.text = `${x.nombre} (Stock: ${x.stock})`; 
+            o.value = x.nombre; 
+            s.add(o); 
+        });
+      }
+
+      function filtrarProductosMov() {
+        const texto = document.getElementById('buscadorMov').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const filtrados = inventarioMov.filter(p => 
+            p.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(texto)
+        );
+        renderOpcionesProducto(filtrados, 'productoMov');
+      }
+
+      function filtrarAnulacion() {
+        const texto = document.getElementById('buscadorAnul').value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const filtrados = inventarioMov.filter(p => 
+            p.nombre.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(texto)
+        );
+        renderOpcionesProducto(filtrados, 'productoAnul');
+      }
+
+      function verificarTipoMovimiento() {
+        const tipo = document.getElementById('tipoMov').value;
+        const divDestino = document.getElementById('divDestino');
+
+        if (tipo === 'TRASLADO') {
+            divDestino.style.display = 'block';
+        } else {
+            divDestino.style.display = 'none';
+        }
+      }
+
+      function actualizarOpcionesDestino() {
+        const selectDestino = document.getElementById('sedeDestino');
+        selectDestino.innerHTML = '';
+        
+        const sedesNombres = {
+            "M": "Magdalena",
+            "S": "Surco",
+            "SMP": "San Martin de Porres"
+        };
+
+        const keys = ["M", "S", "SMP"];
+        
+        keys.forEach(k => {
+            if (k !== currentSede) {
+                let option = document.createElement('option');
+                option.value = sedesNombres[k]; 
+                option.text = sedesNombres[k];  
+                selectDestino.add(option);
+            }
+        });
+      }
+
+      function checkEmptyList() {
+        const msg = document.getElementById('emptyListMsg');
+        const table = document.getElementById('tablaMov');
+        if(listaMovimientos.length === 0) {
+            msg.style.display = 'block';
+            table.style.display = 'none';
+        } else {
+            msg.style.display = 'none';
+            table.style.display = 'table';
+        }
+      }
+
+      function agregarALista() {
+        const prod = document.getElementById('productoMov').value;
+        const cant = parseInt(document.getElementById('cantidadMov').value);
+
+        if (!prod) return;
+        if (cant <= 0) return alert("Cantidad inválida");
+
+        const existe = listaMovimientos.find(i => i.producto === prod);
+        if (existe) {
+            return alert("Este producto ya está en la lista.");
+        }
+
+        listaMovimientos.push({ producto: prod, cantidad: cant });
+        renderTabla();
+        
+        document.getElementById('cantidadMov').value = 1;
+        document.getElementById('tipoMov').disabled = true;
+        
+        document.getElementById('buscadorMov').value = '';
+        renderOpcionesProducto(inventarioMov, 'productoMov');
+    }
+
+      function renderTabla() {
+        const tbody = document.getElementById('bodyMov');
+        tbody.innerHTML = '';
+        
+        checkEmptyList();
+
+        listaMovimientos.forEach((item, index) => {
+            let row = `<tr>
+                <td>${item.producto}</td>
+                <td>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <button class="btn-small" onclick="modCant(${index}, -1)">-</button>
+                        <span style="font-weight:600; min-width:30px; text-align:center;">${item.cantidad}</span>
+                        <button class="btn-small" onclick="modCant(${index}, 1)">+</button>
+                    </div>
+                </td>
+                <td style="text-align:right;"><span style="color:var(--accent); cursor:pointer; font-weight:bold;" onclick="eliminar(${index})">×</span></td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+      }
+
+      function modCant(index, delta) {
+        let nuevo = listaMovimientos[index].cantidad + delta;
+        if (nuevo > 0) {
+            listaMovimientos[index].cantidad = nuevo;
+            renderTabla();
+        } else {
+            eliminar(index);
+        }
+      }
+
+      function eliminar(index) {
+        listaMovimientos.splice(index, 1);
+        renderTabla();
+        if(listaMovimientos.length === 0) {
+            document.getElementById('tipoMov').disabled = false;
+        }
+      }
+
+      function procesarLista() {
+        if (listaMovimientos.length === 0) return alert("La lista está vacía.");
+        
+        const tipo = document.getElementById('tipoMov').value;
+        let destino = "";
+        
+        if (tipo === 'TRASLADO') {
+            destino = document.getElementById('sedeDestino').value;
+            if (!destino) return alert("Seleccione la sede de destino.");
+        }
+
+        const data = {
+            tipo: tipo,
+            destino: destino,
+            lista: listaMovimientos
+        };
+
+        const btn = document.getElementById('btnProcesar');
+        const prevText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = "Procesando...";
+
+        google.script.run
+            .withSuccessHandler(r => { 
+                alert(r);
+                
+                if (tipo === 'TRASLADO' && r.includes("correctamente")) {
+                    descargarExcelTraslado(listaMovimientos, destino);
+                }
+
+                listaMovimientos = [];
+                renderTabla();
+                document.getElementById('tipoMov').disabled = false;
+                verificarTipoMovimiento();
+                cargarProds();
+                btn.disabled = false;
+                btn.innerText = prevText;
+            })
+            .withFailureHandler(e => {
+                alert("Error de conexión: " + e.message);
+                btn.disabled = false;
+                btn.innerText = prevText;
+            })
+            .registrarListaMovimientos(data, currentSede, currentUser);
+      }
+
+      function descargarExcelTraslado(lista, destino) {
+        let csv = "\uFEFFProducto;Cantidad\n";
+        
+        lista.forEach(item => {
+            csv += `"${item.producto}";${item.cantidad}\n`;
+        });
+
+        let fecha = new Date().toLocaleDateString().replace(/\//g, '-') + "_" + new Date().toLocaleTimeString().replace(/:/g, '-');
+        let filename = "TRASLADO_A_" + destino + "_" + fecha + ".csv";
+        
+        let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        let link = document.createElement("a");
+        if (link.download !== undefined) {
+            let url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+      }
+
+      function agregarAnulacionList() {
+        const prod = document.getElementById('productoAnul').value;
+        const cant = parseInt(document.getElementById('cantAnul').value);
+
+        if (!prod) return;
+        if (cant <= 0) return alert("Cantidad inválida");
+
+        const existe = listaAnulacion.find(i => i.producto === prod);
+        if (existe) {
+            return alert("Producto ya en lista de anulación.");
+        }
+
+        listaAnulacion.push({ producto: prod, cantidad: cant });
+        renderTablaAnulacion();
+        document.getElementById('cantAnul').value = 1;
+      }
+
+      function renderTablaAnulacion() {
+        const tbody = document.getElementById('bodyAnulacion');
+        const msg = document.getElementById('emptyListAnul');
+        tbody.innerHTML = '';
+        
+        if(listaAnulacion.length === 0) {
+            msg.style.display = 'block';
+            document.getElementById('tablaAnulacion').style.display = 'none';
+        } else {
+            msg.style.display = 'none';
+            document.getElementById('tablaAnulacion').style.display = 'table';
+        }
+
+        listaAnulacion.forEach((item, index) => {
+             let row = `<tr>
+                <td>${item.producto}</td>
+                <td>${item.cantidad}</td>
+                <td style="text-align:right;"><span style="color:var(--accent); cursor:pointer; font-weight:bold;" onclick="eliminarAnulacion(${index})">×</span></td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+      }
+
+      function eliminarAnulacion(index) {
+        listaAnulacion.splice(index, 1);
+        renderTablaAnulacion();
+      }
+
+      function procesarListaAnulacion() {
+        if (listaAnulacion.length === 0) return alert("Lista de corrección vacía");
+        
+        const motivo = document.getElementById('motivoAnulacion').value;
+        if (!motivo) return alert("Debe ingresar un motivo para la corrección.");
+
+        const tipoAnulacion = document.getElementById('tipoAnulacion').value;
+
+        const data = {
+            lista: listaAnulacion,
+            motivo: motivo,
+            tipoAnulacion: tipoAnulacion
+        };
+
+        const btn = document.getElementById('btnAnular');
+        btn.disabled = true; 
+        btn.innerText = "Procesando...";
+
+        google.script.run
+        .withSuccessHandler(r => {
+            alert(r);
+            listaAnulacion = [];
+            document.getElementById('motivoAnulacion').value = '';
+            renderTablaAnulacion();
+            cargarProds();
+            btn.disabled = false;
+            btn.innerText = "CONFIRMAR CORRECCIÓN";
+        })
+        .withFailureHandler(e => {
+            alert("Error: " + e);
+            btn.disabled = false;
+            btn.innerText = "CONFIRMAR CORRECCIÓN";
+        })
+        .procesarListaAnulacionTraslado(data, currentSede, currentUser);
+      }
+
+      function crearProd() {
+        const nom = document.getElementById('nombreNuevo').value;
+        const stk = document.getElementById('stockInicial').value;
+        const pv = document.getElementById('precioVenta').value;
+        const pc = document.getElementById('precioCosto').value;
+        
+        if(!nom || !stk || !pv) return alert("Complete todos los campos");
+
+        const btn = document.getElementById('btnCrear');
+        btn.disabled = true;
+        btn.innerText = "Creando...";
+
+        google.script.run
+        .withSuccessHandler(r => { 
+            alert(r); 
+            document.getElementById('newProdForm').reset(); 
+            cargarProds(); 
+            btn.disabled = false;
+            btn.innerText = "CREAR PRODUCTO";
+        })
+        .withFailureHandler(e => {
+            alert("Error: " + e);
+            btn.disabled = false;
+            btn.innerText = "CREAR PRODUCTO";
+        })
+        .crearNuevoProducto(
+            nom, stk, pv, pc,
+            currentSede, currentUser
+        );
+      }
+
+      window.onload = init;
+    </script>
+  </body>
+</html>
