@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2A9D8F;
+      --primary-dark: #21867a;
+      --secondary: #264653;
+      --accent: #E76F51;
+      
+      --bg-body: #F4F9F9;
+      --white: #ffffff;
+      --text-main: #2C3E50;
+      --text-light: #95A5A6;
+      
+      --radius: 12px;
+      --shadow: 0 4px 20px rgba(42, 157, 143, 0.08);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: var(--bg-body); min-height: 100vh; width: 100vw; color: var(--text-main); padding-bottom: 100px; }
+
+    .icon { width: 24px; height: 24px; fill: currentColor; }
+    .icon-sm { width: 18px; height: 18px; fill: currentColor; }
+
+    .mobile-header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--primary); padding: 15px;
+      display: flex; justify-content: center; align-items: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .brand-title { color: white; font-weight: 800; letter-spacing: 3px; font-size: 1.1rem; text-transform: uppercase; }
+
+    .main-wrapper { padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+
+    /* BARRA DE ACCIONES (4 Botones adaptados) */
+    .action-bar { display: flex; gap: 8px; }
+    .btn-action {
+      flex: 1; padding: 10px 5px; border: none; border-radius: var(--radius);
+      background: white; color: var(--primary); font-weight: 600; font-size: 0.65rem;
+      box-shadow: var(--shadow); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px;
+      transition: 0.2s; border: 1px solid transparent; text-align: center; line-height:1.1;
+    }
+    .btn-action:active { transform: scale(0.96); background: #f0f8ff; border-color: var(--primary); }
+    .btn-icon-wrapper { 
+      background: var(--bg-body); width: 30px; height: 30px; border-radius: 50%; 
+      display: flex; align-items: center; justify-content: center; color: var(--primary);
+    }
+
+    /* BARRA DE BÚSQUEDA MÓVIL */
+    .search-input { 
+      width: 100%; padding: 12px 18px; border: none; border-radius: var(--radius); 
+      background: white; box-shadow: var(--shadow); font-size: 0.9rem; outline: none;
+      color: var(--text-main); margin-bottom: 5px;
+    }
+    .search-input:focus { border: 1px solid var(--primary); }
+
+    .section-label { font-size: 0.8rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; margin-bottom: 10px; letter-spacing: 1px; }
+    .product-list { display: flex; flex-direction: column; gap: 10px; }
+    
+    .product-row {
+      background: var(--white); padding: 15px 20px; border-radius: var(--radius);
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: var(--shadow); cursor: pointer; border: 1px solid transparent; transition: 0.2s;
+    }
+    .product-row:active { transform: scale(0.98); border-color: var(--primary); background: #e0f2f1; }
+    .prod-name { font-weight: 600; color: var(--text-main); font-size: 0.95rem; }
+    .prod-price { font-weight: 700; color: var(--primary); background: #f0f8ff; padding: 4px 12px; border-radius: 20px; font-size: 0.9rem; }
+
+    .cart-container { background: white; border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+    .cart-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 15px; }
+    .cart-title { font-weight: 700; font-size: 1rem; color: var(--text-main); text-transform: uppercase; letter-spacing: 1px; }
+    .order-id { background: #f0f2f5; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; color: #555; }
+    .cart-items { display: flex; flex-direction: column; gap: 12px; }
+    .empty-msg { text-align: center; color: #aaa; padding: 20px 0; font-style: italic; font-size: 0.9rem; }
+
+    .c-item { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px dashed #eee; }
+    .c-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .c-info { display: flex; flex-direction: column; flex: 1; padding-right: 10px; }
+    .c-name { font-weight: 600; font-size: 0.9rem; color: var(--text-main); line-height: 1.2; margin-bottom:2px;}
+    .c-sub { font-size: 0.8rem; color: var(--text-light); }
+    .c-actions { display: flex; align-items: center; gap: 8px; }
+    
+    .qty-group { display: flex; align-items: center; background: #f0f2f5; border-radius: 10px; padding: 2px; }
+    .btn-qty-mob { width: 32px; height: 32px; border: none; background: white; border-radius: 8px; color: var(--primary); font-weight: 700; font-size: 1.1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.1s; }
+    .btn-qty-mob:active { background: #eee; transform: scale(0.95); }
+    .qty-display { min-width: 28px; text-align: center; font-weight: 600; font-size: 0.9rem; color: var(--text-main); }
+    .btn-del { background: none; color: var(--accent); border: none; width: 32px; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+    .form-section { background: white; border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+    .input-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+    .input-std { width: 100%; padding: 14px; border: 2px solid #f0f0f0; border-radius: 12px; font-size: 1rem; outline: none; background: #f9fbfb; color: var(--text-main); transition: 0.3s; }
+    .input-std:focus { border-color: var(--primary); background: white; }
+    .input-std.error { border-color: var(--accent); background: #fff5f5; }
+
+    .chip-label { font-size: 0.7rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+    .chip-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .chip-item { flex: 1; position: relative; }
+    .chip-item input { display: none; }
+    .chip-item label { display: flex; align-items: center; justify-content: center; width: 100%; height: 45px; background: #f0f2f5; border-radius: 12px; font-size: 0.9rem; font-weight: 600; color: #7f8c8d; cursor: pointer; transition: 0.2s; border: 1px solid transparent; user-select: none; }
+    .chip-item input:checked + label { color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transform: translateY(-2px); }
+
+    #ch-feria:checked + label { background: #f1c40f; color: white; } 
+    #ch-deli:checked + label { background: #8e44ad; }
+    #st-pagado:checked + label { background: #27ae60; }
+    #st-pendiente:checked + label { background: #c0392b; color: white; }
+    #py-plin:checked + label { background: #27ae60; }
+    #py-cash:checked + label { background: #2980b9; }
+    #py-pend:checked + label { background: #bdc3c7; cursor: not-allowed; opacity: 0.6; }
+
+    .mov-grid { display: flex; gap: 10px; margin-bottom: 20px; width: 100%; }
+    .mov-item { flex: 1; position: relative; }
+    .mov-item input { display: none; }
+    .mov-btn {
+      display: grid !important; place-items: center !important; width: 100%; height: 55px; background: #f0f2f5; border-radius: 12px; 
+      font-size: 0.9rem; font-weight: 800; color: #95a5a6; text-transform: uppercase; letter-spacing: 1px;
+      cursor: pointer; transition: all 0.2s ease; border: 2px solid transparent; box-shadow: 0 2px 5px rgba(0,0,0,0.05); padding: 0; margin: 0;
+    }
+    #mov-ingreso:checked + .mov-btn { background: #27ae60; color: white; border-color: #27ae60; box-shadow: 0 8px 20px rgba(39, 174, 96, 0.4); transform: translateY(-2px); }
+    #mov-salida:checked + .mov-btn { background: #c0392b; color: white; border-color: #c0392b; box-shadow: 0 8px 20px rgba(192, 57, 43, 0.4); transform: translateY(-2px); }
+
+    .sticky-footer { position: fixed; bottom: 0; left: 0; width: 100%; background: white; padding: 15px 25px; box-shadow: 0 -5px 30px rgba(0,0,0,0.08); z-index: 90; display: flex; justify-content: space-between; align-items: center; border-top-left-radius: 25px; border-top-right-radius: 25px; }
+    .total-info { display: flex; flex-direction: column; }
+    .total-label { font-size: 0.8rem; color: var(--text-light); font-weight: 500; }
+    .total-value { font-size: 1.5rem; font-weight: 800; color: var(--text-main); }
+    .btn-cobrar { background: var(--text-main); color: white; border: none; padding: 14px 35px; border-radius: 14px; font-size: 1rem; font-weight: 700; text-transform: uppercase; box-shadow: 0 8px 20px rgba(44, 62, 80, 0.25); letter-spacing: 1.5px; transition: 0.2s; }
+    .btn-cobrar:active { transform: scale(0.95); }
+    .btn-cobrar:disabled { background: #e0e0e0; color: #aaa; box-shadow: none; cursor: not-allowed; }
+
+    .toast-container { position: fixed; top: 15px; left: 50%; transform: translateX(-50%); z-index: 5000; width: 90%; pointer-events: none; display: flex; justify-content: center;}
+    .toast { background: var(--text-main); color: white; padding: 12px 25px; border-radius: 50px; font-size: 0.95rem; font-weight: 500; box-shadow: 0 10px 30px rgba(0,0,0,0.2); opacity: 0; transform: translateY(-20px); transition: all 0.4s; text-align: center; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .modal-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 3000; display: none; justify-content: center; align-items: flex-end; backdrop-filter: blur(5px); }
+    .modal-box { background: white; width: 100%; height: 92%; border-radius: 30px 30px 0 0; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 -10px 50px rgba(0,0,0,0.1); border: 1px solid #f0f0f0; }
+    .modal-head { padding: 25px; background: var(--white); border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+    .modal-head h3 { font-weight: 700; color: var(--primary); font-size: 1.2rem; margin: 0; }
+    .modal-content { flex: 1; padding: 25px; overflow-y: auto; background: var(--bg-body); }
+    .m-item { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px; border-radius: 16px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+    .btn-act { width: 36px; height: 36px; border-radius: 10px; border: none; color: white; margin-left: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    .edit { background: #f39c12; } .del { background: var(--accent); }
+    .modal-form { display: flex; flex-direction: column; gap: 15px; }
+    .modal-form label { font-weight: 700; color: var(--text-light); font-size: 0.8rem; text-transform: uppercase; }
+    .btn-modal-save { background: var(--primary); color: white; width: 100%; padding: 15px; border-radius: 14px; border: none; font-weight: 700; font-size: 1rem; margin-top: 10px; transition:0.3s;}
+    .btn-modal-save:disabled { background: #95a5a6; cursor: not-allowed; }
+    .btn-modal-back { background: #f0f2f5; color: #555; width: 100%; padding: 15px; border-radius: 14px; border: none; font-weight: 700; font-size: 1rem; margin-top: 5px; }
+
+    .confirm-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(44, 62, 80, 0.6); z-index: 4000; display: none; justify-content: center; align-items: center; }
+    .confirm-box { background: white; padding: 30px; border-radius: 20px; width: 85%; text-align: center; }
+    .confirm-msg { font-size: 1.1rem; font-weight: 600; color: var(--text-main); margin-bottom: 20px; }
+    .confirm-actions { display: flex; gap: 10px; }
+    .btn-conf { padding: 14px; border-radius: 12px; border: none; font-weight: 700; flex: 1; font-size: 1rem; }
+    .btn-no { background: #f0f2f5; color: var(--text-main); } .btn-yes { background: var(--accent); color: white; }
+
+    select.input-std { appearance: none; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='%2395A5A6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; cursor: pointer; }
+  </style>
+</head>
+<body onload="init()">
+
+  <div class="mobile-header">
+    <div class="brand-title">BOBBASTIK</div>
+  </div>
+
+  <div class="main-wrapper">
+    
+    <div class="action-bar">
+      <button class="btn-action" onclick="openCreateMode()">
+        <div class="btn-icon-wrapper"><svg class="icon" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
+        Crear
+      </button>
+      <button class="btn-action" onclick="openMaintenanceMode()">
+        <div class="btn-icon-wrapper"><svg class="icon" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></div>
+        Menú
+      </button>
+      <button class="btn-action" onclick="openComboMode()">
+        <div class="btn-icon-wrapper"><svg class="icon" viewBox="0 0 24 24"><path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.41l9 9c.36.36.86.59 1.41.59.55 0 1.05-.22 1.41-.59l7-7c.36-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/></svg></div>
+        Combos
+      </button>
+      <button class="btn-action" onclick="openMovementsMode()">
+        <div class="btn-icon-wrapper"><svg class="icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05 1.18 1.91 2.53 1.91 1.29 0 2.13-.81 2.13-1.88 0-1.09-.86-1.72-2.77-2.14-2.11-.47-3.12-1.62-3.12-3.2 0-1.8 1.34-2.88 2.87-3.17V4h2.67v1.96c1.61.32 2.87 1.38 2.98 3.12h-1.92c-.12-.91-.97-1.58-2.13-1.58-1.14 0-1.97.77-1.97 1.77 0 1.13.96 1.63 2.85 2.14 2.04.53 3.04 1.6 3.04 3.17 0 1.92-1.34 3.04-2.8 3.39z"/></svg></div>
+        Finanzas
+      </button>
+    </div>
+
+    <input type="text" id="searchProduct" class="search-input" placeholder="🔍 Buscar sabor o bebida..." onkeyup="filterProducts()">
+
+    <div>
+      <div class="section-label">Menú de Sabores</div>
+      <div id="productList" class="product-list">
+        <p style="text-align:center; color:#999; padding:20px;">Cargando menú...</p>
+      </div>
+    </div>
+
+    <div class="cart-container">
+      <div class="cart-header">
+        <span class="cart-title">Tu Pedido</span>
+        <span class="order-id" id="orderId">---</span>
+      </div>
+      <div class="cart-items" id="cartList"></div>
+    </div>
+
+    <div class="form-section">
+      <div class="section-label" style="margin-bottom:15px;">Detalles de Venta</div>
+      
+      <div class="input-group">
+        <input type="text" id="clientName" class="input-std" placeholder="Cliente (Opcional)">
+        <input type="text" id="orderObs" class="input-std" placeholder="Observaciones">
+      </div>
+
+      <div class="chip-label">Canal</div>
+      <div class="chip-row">
+        <div class="chip-item">
+          <input type="radio" name="channel" id="ch-feria" value="FERIA" checked>
+          <label for="ch-feria">Feria</label>
+        </div>
+        <div class="chip-item">
+          <input type="radio" name="channel" id="ch-deli" value="DELIVERY">
+          <label for="ch-deli">Deli</label>
+        </div>
+      </div>
+
+      <div class="chip-label">Estado</div>
+      <div class="chip-row">
+        <div class="chip-item">
+          <input type="radio" name="status" id="st-pagado" value="PAGADO" checked onchange="updateState()">
+          <label for="st-pagado">Pagado</label>
+        </div>
+        <div class="chip-item">
+          <input type="radio" name="status" id="st-pendiente" value="PENDIENTE" onchange="updateState()">
+          <label for="st-pendiente">Pendiente</label>
+        </div>
+      </div>
+
+      <div class="chip-label">Método de Pago</div>
+      <div class="chip-row" id="methodGroup">
+        <div class="chip-item">
+          <input type="radio" name="payment" id="py-plin" value="PLIN" checked>
+          <label for="py-plin">Plin</label>
+        </div>
+        <div class="chip-item">
+          <input type="radio" name="payment" id="py-cash" value="EFECTIVO">
+          <label for="py-cash">Efectivo</label>
+        </div>
+        <input type="radio" name="payment" id="py-pend" value="PENDIENTE" disabled style="display:none;">
+      </div>
+    </div>
+
+  </div> 
+
+  <div class="sticky-footer">
+    <div class="total-info">
+      <span class="total-label">Total a Cobrar</span>
+      <span class="total-value" id="totalVal">S/ 0.00</span>
+    </div>
+    <button class="btn-cobrar" id="btnSave" onclick="saveOrder()" disabled>COBRAR</button>
+  </div>
+
+  <div class="modal-wrap" id="mModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="modalTitle">Título</h3>
+        <button onclick="closeMaint()" style="background:none; border:none; color:var(--text-main); font-size:2rem; line-height:1;">&times;</button>
+      </div>
+      <div class="modal-content">
+        
+        <div id="viewForm" style="display:none;">
+          <div class="modal-form">
+            <input type="hidden" id="prodId">
+            <div>
+              <label>Nombre</label>
+              <input type="text" id="prodName" class="input-std" placeholder="Ej: Fresa">
+            </div>
+            <div>
+              <label>Precio</label>
+              <input type="number" id="prodPrice" class="input-std" step="0.5" placeholder="0.00">
+            </div>
+            <button id="btnSaveProd" onclick="saveProdDb()" class="btn-modal-save">Guardar</button>
+            <button onclick="backToList()" id="btnBack" class="btn-modal-back">Cancelar</button>
+          </div>
+        </div>
+
+        <div id="viewCombo" style="display:none;">
+          <div class="modal-form">
+            <div>
+              <label>Bebida 1</label>
+              <select id="comboB1" class="input-std"></select>
+            </div>
+            <div>
+              <label>Bebida 2</label>
+              <select id="comboB2" class="input-std"></select>
+            </div>
+            <div>
+              <label>Precio del Combo (S/)</label>
+              <input type="number" id="comboPrice" class="input-std" step="0.5" placeholder="0.00">
+            </div>
+            <button onclick="addComboToCart()" class="btn-modal-save">Agregar al Pedido</button>
+          </div>
+        </div>
+
+        <div id="viewMovements" style="display:none;">
+          <div class="modal-form">
+            <div class="chip-label" style="text-align:left;">Tipo de Movimiento</div>
+            <div class="mov-grid">
+              <div class="mov-item">
+                <input type="radio" name="movType" id="mov-ingreso" value="INGRESO" checked>
+                <label for="mov-ingreso" class="mov-btn">INGRESO</label>
+              </div>
+              <div class="mov-item">
+                <input type="radio" name="movType" id="mov-salida" value="SALIDA">
+                <label for="mov-salida" class="mov-btn">SALIDA</label>
+              </div>
+            </div>
+            <div>
+              <label>Concepto</label>
+              <input type="text" id="movConcept" class="input-std" placeholder="Ej: Vasos, Cambio...">
+            </div>
+            <div>
+              <label>Monto</label>
+              <input type="number" id="movAmount" class="input-std" step="0.5" placeholder="0.00">
+            </div>
+            <button id="btnSaveMov" onclick="saveMovement()" class="btn-modal-save">Registrar</button>
+          </div>
+        </div>
+
+        <div id="viewList" style="display:none;">
+          <div id="mList">Cargando...</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastArea"></div>
+
+  <div class="confirm-overlay" id="confirmModal">
+    <div class="confirm-box">
+      <div style="margin-bottom:15px;">
+        <svg class="icon" style="width:50px; height:50px; fill:var(--accent);" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      </div>
+      <div class="confirm-msg" id="confirmMsg">¿Estás seguro?</div>
+      <div class="confirm-actions">
+        <button class="btn-conf btn-no" onclick="closeConfirm(false)">Cancelar</button>
+        <button class="btn-conf btn-yes" onclick="closeConfirm(true)">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let PRODUCTS = [];
+    let cart = [];
+    let currId = '';
+    let confirmCallback = null;
+
+    function init() {
+      newId();
+      renderCart();
+      updateState();
+      loadData();
+    }
+
+    function loadData() {
+      google.script.run.withSuccessHandler(d => {
+        PRODUCTS = d;
+        renderList(PRODUCTS);
+      }).obtenerProductos();
+    }
+
+    function filterProducts() {
+      const query = document.getElementById('searchProduct').value.toLowerCase();
+      const filtered = PRODUCTS.filter(p => p.nombre.toLowerCase().includes(query));
+      renderList(filtered);
+    }
+
+    function renderList(data) {
+      const c = document.getElementById('productList');
+      c.innerHTML = '';
+      if(!data || data.length === 0) { 
+        c.innerHTML = '<p style="text-align:center; padding:20px; color:#aaa;">No se encontraron resultados.</p>'; 
+        return; 
+      }
+      
+      data.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'product-row';
+        row.onclick = () => add(p);
+        row.innerHTML = `
+          <span class="prod-name">${p.nombre}</span>
+          <span class="prod-price">S/ ${parseFloat(p.precio).toFixed(2)}</span>
+        `;
+        c.appendChild(row);
+      });
+    }
+
+    function add(prod) {
+      const exist = cart.find(i => i.id === prod.id);
+      if(exist) exist.cantidad++;
+      else cart.push({...prod, cantidad: 1});
+      renderCart();
+    }
+
+    function modQty(id, n) {
+      const idx = cart.findIndex(x => x.id == id);
+      if(idx > -1) {
+        cart[idx].cantidad += n;
+        if(cart[idx].cantidad <= 0) cart.splice(idx, 1);
+      }
+      renderCart();
+    }
+
+    function remove(id) {
+      const idx = cart.findIndex(x => x.id == id);
+      if(idx > -1) cart.splice(idx, 1);
+      renderCart();
+    }
+
+    function renderCart() {
+      const list = document.getElementById('cartList');
+      const totalEl = document.getElementById('totalVal');
+      const btn = document.getElementById('btnSave');
+      
+      if(cart.length === 0) {
+        list.innerHTML = `<div class="empty-msg">
+            <svg class="icon" style="width:40px; height:40px; fill:#dcebea; margin-bottom:10px;" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+            <p>Carrito vacío</p></div>`;
+        totalEl.innerText = 'S/ 0.00';
+        btn.disabled = true;
+        btn.innerText = "COBRAR";
+        return;
+      }
+
+      list.innerHTML = '';
+      let sum = 0;
+      cart.forEach(i => {
+        sum += i.precio * i.cantidad;
+        list.innerHTML += `
+          <div class="c-item">
+            <div class="c-info">
+              <span class="c-name">${i.nombre}</span>
+              <span class="c-sub">S/ ${i.precio.toFixed(2)} unit.</span>
+            </div>
+            <div class="c-actions">
+              <div class="qty-group">
+                 <button class="btn-qty-mob" onclick="modQty('${i.id}', -1)">-</button>
+                 <span class="qty-display">${i.cantidad}</span>
+                 <button class="btn-qty-mob" onclick="modQty('${i.id}', 1)">+</button>
+              </div>
+              <button class="btn-del" onclick="remove('${i.id}')">
+                <svg class="icon-sm" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+              </button>
+            </div>
+          </div>`;
+      });
+      totalEl.innerText = 'S/ ' + sum.toFixed(2);
+      btn.innerText = `COBRAR S/ ${sum.toFixed(2)}`;
+      btn.disabled = false;
+    }
+
+    function updateState() {
+      const isPend = document.getElementById('st-pendiente').checked;
+      const cl = document.getElementById('clientName');
+      const grp = document.getElementById('methodGroup');
+      const pPend = document.getElementById('py-pend');
+      const pPlin = document.getElementById('py-plin');
+
+      if(isPend) {
+        cl.placeholder = "Cliente (Obligatorio)*";
+        grp.classList.add('disabled-area');
+        pPend.disabled = false;
+        pPend.checked = true;
+      } else {
+        cl.placeholder = "Cliente (Opcional)";
+        cl.classList.remove('error');
+        grp.classList.remove('disabled-area');
+        pPend.disabled = true;
+        if(pPend.checked) pPlin.checked = true;
+      }
+    }
+
+    function newId() {
+      currId = 'V-' + Date.now().toString().slice(-5);
+      document.getElementById('orderId').innerText = currId;
+    }
+
+    function saveOrder() {
+      if(cart.length === 0) return;
+      const st = document.querySelector('input[name="status"]:checked').value;
+      const cl = document.getElementById('clientName');
+      const obs = document.getElementById('orderObs').value.trim();
+      let name = cl.value.trim();
+
+      if(st === 'PENDIENTE' && name === "") {
+        showToast("Falta nombre del cliente");
+        cl.classList.add('error'); cl.focus(); return;
+      }
+      if(st === 'PAGADO' && name === "") name = "Clientes Varios";
+
+      const btn = document.getElementById('btnSave');
+      btn.innerText = "PROCESANDO..."; btn.disabled = true;
+      cl.classList.remove('error');
+
+      const pay = (st === 'PENDIENTE') ? 'PENDIENTE' : document.querySelector('input[name="payment"]:checked').value;
+      const ch = document.querySelector('input[name="channel"]:checked').value;
+      const total = cart.reduce((a,b) => a + (b.precio * b.cantidad), 0);
+
+      const obj = {
+        id: currId, items: cart, total: total, metodoPago: pay,
+        estadoPago: st, cliente: name, observaciones: obs, canal: ch
+      };
+
+      google.script.run
+        .withSuccessHandler(res => {
+          if(res.success) {
+            cart = [];
+            document.getElementById('clientName').value = "";
+            document.getElementById('orderObs').value = "";
+            renderCart(); newId();
+            document.getElementById('st-pagado').checked = true;
+            updateState();
+            showToast("Venta Registrada");
+          } else { showToast("Error al guardar"); }
+          btn.innerText = "COBRAR";
+          btn.disabled = false;
+          renderCart();
+        })
+        .withFailureHandler(err => {
+          showToast("Error de conexión");
+          btn.disabled = false; renderCart();
+        })
+        .guardarVenta(obj);
+    }
+
+    function showModalView(viewId, title) {
+      document.getElementById('mModal').style.display = 'flex';
+      document.getElementById('modalTitle').innerText = title;
+      ['viewForm', 'viewList', 'viewMovements', 'viewCombo'].forEach(id => {
+        document.getElementById(id).style.display = (id === viewId) ? 'block' : 'none';
+      });
+      document.getElementById('btnBack').style.display = (viewId === 'viewList' || viewId === 'viewForm') ? 'block' : 'none';
+      if(viewId !== 'viewList' && viewId !== 'viewForm') document.getElementById('btnBack').style.display = 'none';
+    }
+
+    function openCreateMode() {
+      clearForm();
+      showModalView('viewForm', 'Crear Bebida');
+      document.getElementById('btnBack').style.display = 'none';
+    }
+
+    function openMaintenanceMode() {
+      renderMList();
+      showModalView('viewList', 'Editar Menú');
+    }
+
+    function openMovementsMode() {
+      document.getElementById('movConcept').value = '';
+      document.getElementById('movAmount').value = '';
+      document.getElementById('mov-ingreso').checked = true;
+      showModalView('viewMovements', 'Finanzas');
+    }
+
+    function openComboMode() {
+      let options = '<option value="" disabled selected>Seleccione una bebida...</option>';
+      PRODUCTS.forEach(p => { options += `<option value="${p.nombre}">${p.nombre}</option>`; });
+      document.getElementById('comboB1').innerHTML = options;
+      document.getElementById('comboB2').innerHTML = options;
+      document.getElementById('comboPrice').value = '';
+      showModalView('viewCombo', 'Combos y Ofertas');
+    }
+
+    function backToList() { showModalView('viewList', 'Editar Menú'); }
+
+    function closeMaint() { document.getElementById('mModal').style.display = 'none'; clearForm(); }
+
+    function clearForm() {
+      document.getElementById('prodId').value = ''; 
+      document.getElementById('prodName').value = ''; 
+      document.getElementById('prodPrice').value = ''; 
+    }
+
+    function addComboToCart() {
+      const b1 = document.getElementById('comboB1').value;
+      const b2 = document.getElementById('comboB2').value;
+      const price = parseFloat(document.getElementById('comboPrice').value);
+
+      if(!b1 || !b2 || isNaN(price) || price <= 0) {
+        showToast("Complete todos los datos del combo");
+        return;
+      }
+
+      const comboName = `Promo: ${b1} + ${b2}`;
+      const comboId = 'CMB-' + Date.now();
+
+      cart.push({ id: comboId, nombre: comboName, precio: price, cantidad: 1 });
+      renderCart();
+      closeMaint();
+      showToast("Combo Agregado");
+    }
+
+    function renderMList() {
+      const d = document.getElementById('mList');
+      d.innerHTML = '';
+      PRODUCTS.forEach(p => {
+        d.innerHTML += `
+          <div class="m-item">
+            <div><strong>${p.nombre}</strong><br><small>S/ ${parseFloat(p.precio).toFixed(2)}</small></div>
+            <div>
+              <button class="btn-act edit" onclick="editP('${p.id}','${p.nombre}','${p.precio}')">
+                <svg class="icon-sm" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+              </button>
+              <button class="btn-act del" onclick="delP('${p.id}')">
+                <svg class="icon-sm" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+              </button>
+            </div>
+          </div>`;
+      });
+    }
+
+    function editP(id, n, p) {
+      document.getElementById('prodId').value = id;
+      document.getElementById('prodName').value = n;
+      document.getElementById('prodPrice').value = p;
+      showModalView('viewForm', 'Editar');
+      document.getElementById('btnBack').style.display = 'block';
+    }
+
+    function saveProdDb() {
+      const id = document.getElementById('prodId').value;
+      const n = document.getElementById('prodName').value.trim();
+      const p = parseFloat(document.getElementById('prodPrice').value);
+      if(!n || isNaN(p)) { showToast("Datos inválidos"); return; }
+      
+      const btn = document.getElementById('btnSaveProd');
+      const originalText = btn.innerText;
+      btn.innerText = "PROCESANDO..."; btn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(r => {
+          btn.innerText = originalText; btn.disabled = false;
+          if(r.success) { closeMaint(); loadData(); showToast("Guardado"); }
+        })
+        .withFailureHandler(e => {
+          btn.innerText = originalText; btn.disabled = false;
+          showToast("Error de conexión");
+        })
+        .guardarProducto({id, nombre: n, precio: p});
+    }
+
+    function saveMovement() {
+      const concept = document.getElementById('movConcept').value.trim();
+      const amount = parseFloat(document.getElementById('movAmount').value);
+      const type = document.querySelector('input[name="movType"]:checked').value;
+
+      if(!concept || isNaN(amount) || amount <= 0) {
+        showToast("Datos inválidos"); return;
+      }
+
+      const btn = document.getElementById('btnSaveMov');
+      const originalText = btn.innerText;
+      btn.innerText = "PROCESANDO..."; btn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(r => {
+          btn.innerText = originalText; btn.disabled = false;
+          if(r.success) { closeMaint(); showToast("Registrado"); } 
+          else { showToast("Error al guardar"); }
+        })
+        .withFailureHandler(e => {
+          btn.innerText = originalText; btn.disabled = false;
+          showToast("Error de conexión");
+        })
+        .guardarMovimiento({ concepto: concept, monto: amount, tipo: type });
+    }
+
+    function delP(id) {
+      showConfirm("¿Eliminar?", (result) => {
+        if(result) {
+          google.script.run.withSuccessHandler(r => {
+            if(r.success) { loadData(); renderMList(); showToast("Eliminado"); }
+          }).eliminarProducto(id);
+        }
+      });
+    }
+
+    function showToast(msg) {
+      const container = document.getElementById('toastArea');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerText = msg;
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.add('show');
+        setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 2500);
+      });
+    }
+
+    function showConfirm(msg, cb) {
+      document.getElementById('confirmMsg').innerText = msg;
+      document.getElementById('confirmModal').style.display = 'flex';
+      confirmCallback = cb;
+    }
+
+    function closeConfirm(val) {
+      document.getElementById('confirmModal').style.display = 'none';
+      if(confirmCallback) confirmCallback(val);
+      confirmCallback = null;
+    }
+  </script>
+</body>
+</html>
