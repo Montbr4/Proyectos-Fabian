@@ -1,16 +1,16 @@
 const ID_HOJA = "";
 
 const DB_USUARIOS = {
-  "davis":     { pass: "", roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
-  "grace":     { pass: "", roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
-  "marissa":   { pass: "",           roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
-  "fabian":    { pass: "",          roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
-  "jhair":     { pass: "",    roles: ["S","OC", "IR", "PC"] },
-  "kimberly":  { pass: "",    roles: ["S","OC", "IR"] },
-  "rafael":    { pass: "", roles: ["M","OC", "PC"] },
-  "alvaro":    { pass: "",    roles: ["SMP", "M"] },
-  "sebastian": { pass: "",    roles: ["S"] },
-  "paola":     { pass: "",    roles: ["S"] }
+  "davis":     { pass: "Pharman091510.", roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
+  "grace":     { pass: "Pharman091510.", roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
+  "marissa":   { pass: "nico",           roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
+  "fabian":    { pass: "masha",          roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
+  "jhair":     { pass: "Pharman2025",    roles: ["S","OC", "IR", "PC"] },
+  "kimberly":  { pass: "Pharman2025",    roles: ["S","OC", "IR"] },
+  "rafael":    { pass: "BartoloMew123#", roles: ["M","OC", "PC"] },
+  "alvaro":    { pass: "Pharman2025",    roles: ["SMP", "M"] },
+  "sebastian": { pass: "Pharman2025",    roles: ["S"] },
+  "paola":     { pass: "Pharman2025",    roles: ["S"] }
 };
 
 function normalizarTexto(texto) {
@@ -177,7 +177,7 @@ function actualizarCostoGlobal(producto, nuevoCosto) {
 
 function registrarVentaCompleta(data, sedeRecibida, usuario) {
   var lock = LockService.getScriptLock();
-  try { lock.waitLock(30000); } catch (e) { return "Timeout."; }
+  try { lock.waitLock(30000); } catch (e) { return "Timeout del servidor."; }
 
   try {
       const ss = SpreadsheetApp.openById(ID_HOJA);
@@ -197,11 +197,14 @@ function registrarVentaCompleta(data, sedeRecibida, usuario) {
       
       const fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy");
       let totalCalculado = 0;
+      
       const dataInv = sInventario.getDataRange().getValues();
       let mapaInv = {};
       for(let i=1; i<dataInv.length; i++) {
         if(dataInv[i][0]) mapaInv[normalizarTexto(dataInv[i][0])] = i; 
       }
+
+      let deducciones = {};
 
       data.carrito.forEach(item => {
         let nombreProducto = item.nombre ? item.nombre.toString().trim() : "";
@@ -209,35 +212,34 @@ function registrarVentaCompleta(data, sedeRecibida, usuario) {
 
         let totalLinea = parseFloat(item.cantidad) * parseFloat(item.precioVenta);
         totalCalculado += totalLinea;
+        
         sVenta.appendRow([fecha, data.idVenta, data.tienda, item.cantidad, nombreProducto, item.precioVenta, totalLinea, usuario, ""]);
-        let filaRecienAgregada = sVenta.getLastRow();
-        let esAgotado = false;
 
         if (item.esPack && item.componentes) {
             item.componentes.forEach(comp => {
                 let compNombre = comp.nombre ? comp.nombre.toString().trim() : "";
-                if(sDetallePacks) sDetallePacks.appendRow([data.idVenta, nombreProducto, compNombre, comp.cantidad]);
-                let cantDesc = comp.cantidad * item.cantidad;
-                
-                let idx = mapaInv[normalizarTexto(compNombre)];
-                if (idx !== undefined) {
-                    let stock = parseInt(dataInv[idx][1]) - parseInt(cantDesc);
-                    sInventario.getRange(idx + 1, 2).setValue(stock);
-                    dataInv[idx][1] = stock; 
-                    if(stock <= 0) esAgotado = true;
+                if(sDetallePacks && compNombre !== "") {
+                    sDetallePacks.appendRow([data.idVenta, nombreProducto, compNombre, comp.cantidad]);
                 }
+                let cantDesc = comp.cantidad * item.cantidad;
+                let normComp = normalizarTexto(compNombre);
+                if (normComp) deducciones[normComp] = (deducciones[normComp] || 0) + cantDesc;
             });
         } else {
-            let idx = mapaInv[normalizarTexto(nombreProducto)];
-            if (idx !== undefined) {
-                let stock = parseInt(dataInv[idx][1]) - parseInt(item.cantidad);
-                sInventario.getRange(idx + 1, 2).setValue(stock);
-                dataInv[idx][1] = stock;
-                if(stock <= 0) esAgotado = true;
-            }
+            let normProd = normalizarTexto(nombreProducto);
+            if (normProd) deducciones[normProd] = (deducciones[normProd] || 0) + parseInt(item.cantidad);
         }
-        if(esAgotado) try { sVenta.getRange(filaRecienAgregada, 5).setBackground("#ea9999"); } catch(e){}
       });
+      
+      for (let prodNorm in deducciones) {
+          let idx = mapaInv[prodNorm];
+          if (idx !== undefined) {
+              let celdaStock = sInventario.getRange(idx + 1, 2);
+              let stockReal = parseInt(celdaStock.getValue()) || 0;
+              let cantADescontar = deducciones[prodNorm];
+              celdaStock.setValue(stockReal - cantADescontar);
+          }
+      }
       
       let prodResumen = data.carrito
           .filter(p => p.nombre && p.nombre.toString().trim() !== "")
@@ -249,6 +251,94 @@ function registrarVentaCompleta(data, sedeRecibida, usuario) {
       SpreadsheetApp.flush();
       return "Venta registrada exitosamente. Total: S/. " + totalCalculado.toFixed(2);
   } catch (e) { return "Error: " + e.toString(); } finally { lock.releaseLock(); }
+}
+
+function procesarAnulacionVenta(idVenta, motivo, sedeRecibida, usuario) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(30000); } catch(e) { return { exito:false, msg:"Sistema ocupado."}; }
+  try {
+    const ss = SpreadsheetApp.openById(ID_HOJA);
+    const sede = sedeRecibida.toString().trim();
+    const sVenta = ss.getSheetByName("VENTA_" + sede);
+    const sInventario = ss.getSheetByName("INVENTARIO_" + sede);
+    const sAnulaciones = ss.getSheetByName("ANULACIONES_" + sede);
+    const sDetallePacks = ss.getSheetByName("DETALLE_PACKS_" + sede);
+    if (!sAnulaciones) return { exito: false, msg: "Error: Hoja anulaciones falta." };
+    
+    const dataVenta = sVenta.getDataRange().getValues();
+    const dataInv = sInventario.getDataRange().getValues();
+    
+    let productosRestaurados = [];
+    let tiendaOrigen = "";
+    let encontrado = false;
+    let filasVentaAEliminar = [];
+    
+    let mapaInv = {};
+    for(let i=1; i<dataInv.length; i++) {
+        if (dataInv[i][0]) mapaInv[normalizarTexto(dataInv[i][0])] = i;
+    }
+
+    let sumasRestauracion = {};
+    let descripcionesRestauradas = [];
+
+    for (let i = 1; i < dataVenta.length; i++) {
+      if (dataVenta[i][1].toString() === idVenta.toString()) {
+        encontrado = true;
+        if (!tiendaOrigen) tiendaOrigen = dataVenta[i][2]; 
+        
+        let producto = dataVenta[i][4] ? dataVenta[i][4].toString().trim() : "";
+        if (producto === "") continue; 
+        
+        let cantidadVenta = parseInt(dataVenta[i][3]);
+        let esPack = producto.startsWith("PACK:");
+        
+        if(esPack) {
+           if (sDetallePacks) {
+               const dataPacks = sDetallePacks.getDataRange().getValues();
+               let filasPackEliminar = [];
+               for (let p = 1; p < dataPacks.length; p++) {
+                   if (dataPacks[p][0].toString() === idVenta.toString() && dataPacks[p][1].toString().trim() === producto) {
+                       let compNombre = dataPacks[p][2] ? dataPacks[p][2].toString().trim() : "";
+                       if (compNombre === "") continue;
+                       let compCantUnit = parseInt(dataPacks[p][3]);
+                       let totalRestaurar = compCantUnit * cantidadVenta;
+                       
+                       let normComp = normalizarTexto(compNombre);
+                       sumasRestauracion[normComp] = (sumasRestauracion[normComp] || 0) + totalRestaurar;
+                       filasPackEliminar.push(p + 1);
+                   }
+               }
+               descripcionesRestauradas.push(`${producto} (Pack Anulado)`);
+               filasPackEliminar.sort((a,b) => b-a).forEach(r => sDetallePacks.deleteRow(r));
+           }
+        } else {
+           let normProd = normalizarTexto(producto);
+           sumasRestauracion[normProd] = (sumasRestauracion[normProd] || 0) + cantidadVenta;
+           descripcionesRestauradas.push(`${producto} (+${cantidadVenta})`);
+        }
+        filasVentaAEliminar.push(i + 1);
+      }
+    }
+    
+    if (!encontrado) return { exito: false, msg: "ID no encontrado." };
+
+    for (let prodNorm in sumasRestauracion) {
+        let idx = mapaInv[prodNorm];
+        if (idx !== undefined) {
+            let celdaStock = sInventario.getRange(idx + 1, 2);
+            let stockReal = parseInt(celdaStock.getValue()) || 0;
+            let aRestaurar = sumasRestauracion[prodNorm];
+            celdaStock.setValue(stockReal + aRestaurar);
+            productosRestaurados.push(`${dataInv[idx][0]} (+${aRestaurar})`);
+        }
+    }
+
+    const fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+    sAnulaciones.appendRow([idVenta, fecha, motivo, productosRestaurados.join(" | "), tiendaOrigen, usuario]);
+    filasVentaAEliminar.sort((a,b) => b-a).forEach(r => sVenta.deleteRow(r));
+    SpreadsheetApp.flush();
+    return { exito: true, msg: "Venta anulada." };
+  } catch(e) { return { exito: false, msg: "Error: " + e.message }; } finally { lock.releaseLock(); }
 }
 
 function registrarListaMovimientos(data, sedeRecibida, usuario) {
@@ -268,34 +358,119 @@ function registrarListaMovimientos(data, sedeRecibida, usuario) {
     for(let i=1; i<dataInv.length; i++) {
        if (dataInv[i][0]) mapaInv[normalizarTexto(dataInv[i][0])] = i; 
     }
-    let actualizacionesCosto = [];
-
-    data.lista.forEach(item => {
+    
+    let operacionesSeguras = [];
+    for (let i = 0; i < data.lista.length; i++) {
+      let item = data.lista[i];
       let nombreProd = item.producto ? item.producto.toString().trim() : "";
-      if (nombreProd === "") return; 
+      if (nombreProd === "") continue; 
 
-      sMov.appendRow([data.tipo, nombreProd, parseInt(item.cantidad), fecha, item.proveedor || "-", usuario, data.destino || "-", ""]);
-      
       let idx = mapaInv[normalizarTexto(nombreProd)];
-      if (idx !== undefined) {
-        let stockActual = parseInt(dataInv[idx][1]) || 0;
-        let cantidadOp = parseInt(item.cantidad);
-        let nuevoStock = (data.tipo === "INGRESO") ? stockActual + cantidadOp : stockActual - cantidadOp;
-        sInv.getRange(idx + 1, 2).setValue(nuevoStock);
-        if (data.tipo === "INGRESO" && item.precioCosto && parseFloat(item.precioCosto) > 0) {
-             let costo = parseFloat(item.precioCosto);
-             sInv.getRange(idx + 1, 4).setValue(costo); 
-             actualizacionesCosto.push({producto: nombreProd, costo: costo}); 
-        }
+      if (idx === undefined) return `Error: El producto ${nombreProd} no existe en inventario.`;
+      
+      let celdaStock = sInv.getRange(idx + 1, 2);
+      let stockActual = parseInt(celdaStock.getValue()) || 0;
+      let cantidadOp = parseInt(item.cantidad);
+
+      if (data.tipo !== "INGRESO" && (stockActual - cantidadOp < 0)) {
+          return `Error: Stock insuficiente para ${nombreProd}. Stock actual: ${stockActual}, Intentó descontar: ${cantidadOp}. No se procesó ningún movimiento.`;
+      }
+
+      operacionesSeguras.push({
+          nombreProd: nombreProd,
+          celdaStock: celdaStock,
+          stockActual: stockActual,
+          cantidadOp: cantidadOp,
+          precioCosto: item.precioCosto,
+          proveedor: item.proveedor,
+          destino: item.destino,
+          idx: idx
+      });
+    }
+
+    let actualizacionesCosto = [];
+    operacionesSeguras.forEach(op => {
+      sMov.appendRow([data.tipo, op.nombreProd, op.cantidadOp, fecha, op.proveedor || "-", usuario, op.destino || "-", ""]);
+      
+      let nuevoStock = (data.tipo === "INGRESO") ? op.stockActual + op.cantidadOp : op.stockActual - op.cantidadOp;
+      op.celdaStock.setValue(nuevoStock);
+
+      if (data.tipo === "INGRESO" && op.precioCosto && parseFloat(op.precioCosto) > 0) {
+           let costo = parseFloat(op.precioCosto);
+           sInv.getRange(op.idx + 1, 4).setValue(costo); 
+           actualizacionesCosto.push({producto: op.nombreProd, costo: costo}); 
       }
     });
+
     SpreadsheetApp.flush();
-    
     if(actualizacionesCosto.length > 0) {
         actualizacionesCosto.forEach(upd => { actualizarCostoGlobal(upd.producto, upd.costo); });
     }
     return "Movimientos registrados correctamente.";
   } catch(e) { return "Error: " + e.toString(); } finally { lock.releaseLock(); }
+}
+
+function procesarListaAnulacionTraslado(data, sedeRecibida, usuario) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(20000); } catch(e) { return "Ocupado."; }
+  try {
+    const ss = SpreadsheetApp.openById(ID_HOJA);
+    const sede = sedeRecibida.toString().trim();
+    const sInv = ss.getSheetByName("INVENTARIO_" + sede);
+    const sMov = ss.getSheetByName("M_INVENTARIO_" + sede);
+    const fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy");
+    const dataInv = sInv.getDataRange().getValues();
+    let mapaInv = {};
+    for(let i=1; i<dataInv.length; i++) {
+        if (dataInv[i][0]) mapaInv[normalizarTexto(dataInv[i][0])] = i;
+    }
+    
+    let tipoAccion = data.tipoAnulacion || "RESTAURAR";
+    let motivo = data.motivo || "Sin detalle";
+    let etiquetaMov = (tipoAccion === "RESTAURAR") ? "ANULACION DE SALIDAS (+)" : "ANULACION DE INGRESOS (-)";
+    
+    data.lista.forEach(item => {
+      let nombreProd = item.producto ? item.producto.toString().trim() : "";
+      if (nombreProd === "") return;
+
+      let idx = mapaInv[normalizarTexto(nombreProd)];
+      if (idx !== undefined) {
+        let celdaStock = sInv.getRange(idx + 1, 2);
+        let stockActual = parseInt(celdaStock.getValue()) || 0;
+        let cantOperacion = parseInt(item.cantidad);
+        let nuevoStock = (tipoAccion === "RESTAURAR") ? stockActual + cantOperacion : stockActual - cantOperacion;
+        
+        celdaStock.setValue(nuevoStock);
+      }
+      sMov.appendRow([etiquetaMov, nombreProd, parseInt(item.cantidad), fecha, "-", usuario, "CORRECCION", motivo]);
+    });
+    return "Corrección procesada.";
+  } catch(e) { return "Error: " + e.message; } finally { lock.releaseLock(); }
+}
+
+function modificarProductoInventario(nombreAntiguo, nombreNuevo, precioNuevo, sedeRecibida) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return "Ocupado."; }
+  try {
+    nombreAntiguo = nombreAntiguo ? nombreAntiguo.toString().trim() : "";
+    nombreNuevo = nombreNuevo ? nombreNuevo.toString().trim() : "";
+    if (nombreAntiguo === "" || nombreNuevo === "") return "Error: El nombre no puede estar en blanco.";
+    let nomAntiguoNorm = normalizarTexto(nombreAntiguo);
+
+    const ss = SpreadsheetApp.openById(ID_HOJA);
+    const sede = sedeRecibida.toString().trim();
+    const sInv = ss.getSheetByName("INVENTARIO_" + sede);
+    if(!sInv) return "Error inventario.";
+    const data = sInv.getDataRange().getValues();
+    for(let i = 1; i < data.length; i++) {
+      if(normalizarTexto(data[i][0]) === nomAntiguoNorm) {
+          sInv.getRange(i + 1, 1).setValue(nombreNuevo);
+          sInv.getRange(i + 1, 3).setValue(parseFloat(precioNuevo));
+          return "Actualizado.";
+      }
+    }
+    return "No encontrado.";
+  } catch(e) { return "Error: " + e.message; } finally { lock.releaseLock(); }
 }
 
 function crearNuevoProducto(nombre, stockInicial, precioVenta, precioCosto, sedeRecibida, usuario) {
@@ -329,7 +504,7 @@ function crearNuevoProducto(nombre, stockInicial, precioVenta, precioCosto, sede
     const dataBD = sBD.getDataRange().getValues();
     let existeEnGlobal = false;
     for(let i = 1; i < dataBD.length; i++) {
-        if(normalizarTexto(dataBD[i][0]) === nomNormalizado) { existeEnGlobal = true; break; }
+        if(dataBD[i][0] && normalizarTexto(dataBD[i][0]) === nomNormalizado) { existeEnGlobal = true; break; }
     }
     if (!existeEnGlobal) sBD.appendRow([nombre, pCosto]);
     
@@ -365,152 +540,6 @@ function guardarIR(data, usuario) {
     sIR.appendRow([data.idRecepcion, data.refOC, data.proveedor, data.notas, data.listaProductos, data.montoPagar, "PENDIENTE PAGO", fecha, usuario]);
     return "Recepción registrada.";
   } catch(e) { return "Error IR: " + e.message; } finally { lock.releaseLock(); }
-}
-
-function procesarAnulacionVenta(idVenta, motivo, sedeRecibida, usuario) {
-  var lock = LockService.getScriptLock();
-  try { lock.waitLock(30000); } catch(e) { return { exito:false, msg:"Sistema ocupado."}; }
-  try {
-    const ss = SpreadsheetApp.openById(ID_HOJA);
-    const sede = sedeRecibida.toString().trim();
-    const sVenta = ss.getSheetByName("VENTA_" + sede);
-    const sInventario = ss.getSheetByName("INVENTARIO_" + sede);
-    const sAnulaciones = ss.getSheetByName("ANULACIONES_" + sede);
-    const sDetallePacks = ss.getSheetByName("DETALLE_PACKS_" + sede);
-    if (!sAnulaciones) return { exito: false, msg: "Error: Hoja anulaciones falta." };
-    
-    const dataVenta = sVenta.getDataRange().getValues();
-    const dataInv = sInventario.getDataRange().getValues();
-    
-    let productosRestaurados = [];
-    let tiendaOrigen = "";
-    let encontrado = false;
-    let filasVentaAEliminar = [];
-    let mapaInv = {};
-    
-    for(let i=1; i<dataInv.length; i++) {
-        if (dataInv[i][0]) mapaInv[normalizarTexto(dataInv[i][0])] = i;
-    }
-
-    for (let i = 1; i < dataVenta.length; i++) {
-      if (dataVenta[i][1].toString() === idVenta.toString()) {
-        encontrado = true;
-        if (!tiendaOrigen) tiendaOrigen = dataVenta[i][2]; 
-        
-        let producto = dataVenta[i][4] ? dataVenta[i][4].toString().trim() : "";
-        if (producto === "") continue; 
-        
-        let cantidadVenta = parseInt(dataVenta[i][3]);
-        let esPack = producto.startsWith("PACK:");
-        
-        if(esPack) {
-           if (sDetallePacks) {
-               const dataPacks = sDetallePacks.getDataRange().getValues();
-               let filasPackEliminar = [];
-               let componentesRestaurados = [];
-               for (let p = 1; p < dataPacks.length; p++) {
-                   if (dataPacks[p][0].toString() === idVenta.toString() && dataPacks[p][1].toString().trim() === producto) {
-                       let compNombre = dataPacks[p][2] ? dataPacks[p][2].toString().trim() : "";
-                       if (compNombre === "") continue;
-                       
-                       let compCantUnit = parseInt(dataPacks[p][3]);
-                       let totalRestaurar = compCantUnit * cantidadVenta;
-                       let idx = mapaInv[normalizarTexto(compNombre)];
-                       if (idx !== undefined) {
-                           let stockActual = parseInt(dataInv[idx][1]);
-                           let nuevoStock = stockActual + totalRestaurar;
-                           dataInv[idx][1] = nuevoStock;
-                           sInventario.getRange(idx + 1, 2).setValue(nuevoStock);
-                           componentesRestaurados.push(`${compNombre} (+${totalRestaurar})`);
-                       }
-                       filasPackEliminar.push(p + 1);
-                   }
-               }
-               productosRestaurados.push(componentesRestaurados.length > 0 ? `${producto} [${componentesRestaurados.join(", ")}]` : `${producto} (Pack sin detalle)`);
-               filasPackEliminar.sort((a,b) => b-a).forEach(r => sDetallePacks.deleteRow(r));
-           }
-        } else {
-           let idx = mapaInv[normalizarTexto(producto)];
-           if (idx !== undefined) {
-              let stockActual = parseInt(dataInv[idx][1]);
-              let nuevoStock = stockActual + cantidadVenta;
-              dataInv[idx][1] = nuevoStock;
-              sInventario.getRange(idx + 1, 2).setValue(nuevoStock);
-              productosRestaurados.push(`${producto} (+${cantidadVenta})`);
-           }
-        }
-        filasVentaAEliminar.push(i + 1);
-      }
-    }
-    if (!encontrado) return { exito: false, msg: "ID no encontrado." };
-    const fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
-    sAnulaciones.appendRow([idVenta, fecha, motivo, productosRestaurados.join(" | "), tiendaOrigen, usuario]);
-    filasVentaAEliminar.sort((a,b) => b-a).forEach(r => sVenta.deleteRow(r));
-    SpreadsheetApp.flush();
-    return { exito: true, msg: "Venta anulada." };
-  } catch(e) { return { exito: false, msg: "Error: " + e.message }; } finally { lock.releaseLock(); }
-}
-
-function modificarProductoInventario(nombreAntiguo, nombreNuevo, precioNuevo, sedeRecibida) {
-  var lock = LockService.getScriptLock();
-  try { lock.waitLock(10000); } catch(e) { return "Ocupado."; }
-  try {
-    nombreAntiguo = nombreAntiguo ? nombreAntiguo.toString().trim() : "";
-    nombreNuevo = nombreNuevo ? nombreNuevo.toString().trim() : "";
-    if (nombreAntiguo === "" || nombreNuevo === "") return "Error: El nombre no puede estar en blanco.";
-    let nomAntiguoNorm = normalizarTexto(nombreAntiguo);
-
-    const ss = SpreadsheetApp.openById(ID_HOJA);
-    const sede = sedeRecibida.toString().trim();
-    const sInv = ss.getSheetByName("INVENTARIO_" + sede);
-    if(!sInv) return "Error inventario.";
-    const data = sInv.getDataRange().getValues();
-    for(let i = 1; i < data.length; i++) {
-      if(normalizarTexto(data[i][0]) === nomAntiguoNorm) {
-          sInv.getRange(i + 1, 1).setValue(nombreNuevo);
-          sInv.getRange(i + 1, 3).setValue(parseFloat(precioNuevo));
-          return "Actualizado.";
-      }
-    }
-    return "No encontrado.";
-  } catch(e) { return "Error: " + e.message; } finally { lock.releaseLock(); }
-}
-
-function procesarListaAnulacionTraslado(data, sedeRecibida, usuario) {
-  var lock = LockService.getScriptLock();
-  try { lock.waitLock(20000); } catch(e) { return "Ocupado."; }
-  try {
-    const ss = SpreadsheetApp.openById(ID_HOJA);
-    const sede = sedeRecibida.toString().trim();
-    const sInv = ss.getSheetByName("INVENTARIO_" + sede);
-    const sMov = ss.getSheetByName("M_INVENTARIO_" + sede);
-    const fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy");
-    const dataInv = sInv.getDataRange().getValues();
-    let mapaInv = {};
-    for(let i=1; i<dataInv.length; i++) {
-        if (dataInv[i][0]) mapaInv[normalizarTexto(dataInv[i][0])] = i;
-    }
-    
-    let tipoAccion = data.tipoAnulacion || "RESTAURAR";
-    let motivo = data.motivo || "Sin detalle";
-    let etiquetaMov = (tipoAccion === "RESTAURAR") ? "ANULACION DE SALIDAS (+)" : "ANULACION DE INGRESOS (-)";
-    
-    data.lista.forEach(item => {
-      let nombreProd = item.producto ? item.producto.toString().trim() : "";
-      if (nombreProd === "") return;
-
-      let idx = mapaInv[normalizarTexto(nombreProd)];
-      if (idx !== undefined) {
-        let stockActual = parseInt(dataInv[idx][1]) || 0;
-        let cantOperacion = parseInt(item.cantidad);
-        let nuevoStock = (tipoAccion === "RESTAURAR") ? stockActual + cantOperacion : stockActual - cantOperacion;
-        sInv.getRange(idx + 1, 2).setValue(nuevoStock);
-        dataInv[idx][1] = nuevoStock;
-      }
-      sMov.appendRow([etiquetaMov, nombreProd, parseInt(item.cantidad), fecha, "-", usuario, "CORRECCION", motivo]);
-    });
-    return "Corrección procesada.";
-  } catch(e) { return "Error: " + e.message; } finally { lock.releaseLock(); }
 }
 
 function inicializarTablas() {
@@ -557,6 +586,7 @@ function inicializarTablas() {
     });
   });
 }
+
 
 function probarReporteSemanalManual() {
   const hoy = new Date();
