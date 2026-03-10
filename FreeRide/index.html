@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <meta name="referrer" content="no-referrer">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Inter:wght@400;500;700&display=swap');
+    body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+    .font-oswald { font-family: 'Oswald', sans-serif; }
+    .input-masha { border: none; border-bottom: 1px solid #333; padding: 12px 0; width: 100%; outline: none; transition: border-color 0.3s; background: transparent; color: white; }
+    .input-masha:focus { border-bottom-color: #facc15; }
+    .spinner-wave { width: 48px; height: 48px; border: 4px solid #ffffff; border-bottom-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .modal-enter { animation: modalIn 0.3s ease-out forwards; }
+    @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .fade-up { animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    .sortable-ghost { opacity: 0.2; background: #374151; }
+    .sortable-drag { cursor: grabbing; }
+    #filterMenu, #catOptions, #surfOptions { box-shadow: 0 4px 12px rgba(0,0,0,0.5); border: 1px solid #1f2937; background-color: #111827; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #000; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #555; }
+  </style>
+</head>
+<body class="bg-black text-white relative flex flex-col min-h-screen">
+
+  <header class="w-full pt-8 pb-8 flex flex-col items-center justify-start relative z-40 overflow-hidden border-b border-gray-900 min-h-[180px]">
+    
+    <div class="absolute top-6 left-6 z-50 flex gap-3">
+      <a onclick="google.script.run.withSuccessHandler(url => window.top.location.href = url + '?p=filmmaker').getScriptUrl()" class="inline-block text-[10px] md:text-xs uppercase tracking-widest font-bold text-yellow-400 hover:text-white transition-colors drop-shadow-md border border-yellow-400/50 bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm cursor-pointer">
+        Soy Filmmaker
+      </a>
+      <a onclick="google.script.run.withSuccessHandler(url => window.top.location.href = url + '?p=surfistas').getScriptUrl()" class="inline-block text-[10px] md:text-xs uppercase tracking-widest font-bold text-blue-400 hover:text-white transition-colors drop-shadow-md border border-blue-400/50 bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm cursor-pointer">
+        Surfistas
+      </a>
+    </div>
+
+    <div class="absolute inset-0 z-[-2]">
+       <img src="https://drive.google.com/thumbnail?id=1Weo6eehRUCbWa3RGF5kp47xPMjjW0cgF&sz=w1920" alt="Fondo Costa Verde" class="w-full h-full object-cover opacity-60 grayscale-[10%] object-center">
+    </div>
+    <div class="absolute inset-0 z-[-1] bg-gradient-to-b from-black/80 via-black/40 to-black"></div>
+
+    <div class="absolute top-6 right-6 flex gap-4 items-center z-50">
+      <button id="btnUsers" onclick="abrirModalUsers()" class="hidden text-xs md:text-sm uppercase tracking-widest text-purple-400 font-bold hover:text-white transition-colors drop-shadow-md">USUARIOS</button>
+      <button id="btnCats" onclick="abrirModalCats()" class="hidden text-xs md:text-sm uppercase tracking-widest text-gray-200 font-bold hover:text-yellow-400 transition-colors drop-shadow-md">PLAYAS</button>
+      <button id="btnAdd" onclick="abrirModal()" class="hidden text-xs md:text-sm uppercase tracking-widest font-bold text-blue-400 hover:text-white transition-colors drop-shadow-md">+ FOTO</button>
+      
+      <button id="btnLogin" onclick="toggleLogin()" class="flex items-center gap-1.5 text-xs md:text-sm uppercase tracking-widest font-bold text-white hover:text-yellow-400 transition-colors group drop-shadow-md">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 md:w-5 md:h-5 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+        <span id="loginText">LOGIN</span>
+      </button>
+    </div>
+
+    <h1 class="font-oswald text-3xl md:text-4xl tracking-[0.15em] text-white text-center uppercase drop-shadow-2xl mt-4">Free Ride</h1>
+    <h2 class="font-bold text-[10px] md:text-xs tracking-[0.4em] text-yellow-400 mt-1 uppercase select-none drop-shadow-md">Costa Verde</h2>
+
+    <div class="mt-4 w-full px-6 flex flex-col items-center z-50">
+       <div class="bg-black/60 backdrop-blur-md rounded-full px-4 py-2.5 flex items-center gap-3 w-full max-w-md border border-gray-600/50 focus-within:border-yellow-400 transition-colors shadow-2xl">
+           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+           <input type="text" id="searchInput" placeholder="BUSCAR SURFISTA O PLAYA..." class="bg-transparent border-none outline-none text-xs text-white w-full placeholder-gray-400 font-medium" onkeyup="filtrarBusqueda(this)">
+       </div>
+    </div>
+  </header>
+
+  <div id="btnSaveOrder" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[80] hidden fade-up flex gap-2">
+    <button onclick="guardarOrden()" class="bg-blue-600 text-white py-3 px-8 text-xs tracking-[0.2em] font-bold uppercase shadow-2xl hover:bg-yellow-400 hover:text-black transition transform hover:scale-105 rounded-full">GUARDAR ORDEN</button>
+    <button onclick="cancelarOrden()" class="bg-[#111827] text-gray-400 py-3 px-6 text-xs tracking-widest font-bold uppercase shadow-xl hover:bg-red-600 hover:text-white transition transform hover:scale-105 rounded-full">X</button>
+  </div>
+
+  <main class="px-6 pb-20 flex-grow w-full pt-8">
+    <div id="loader" class="flex flex-col items-center justify-center mt-20">
+        <div class="spinner-wave mb-6"></div>
+        <p class="text-[11px] font-medium tracking-widest text-gray-500 uppercase animate-pulse">Esperando la ola...</p>
+    </div>
+    <div id="errorDisplay" class="hidden text-center mt-10 text-red-400 text-xs font-bold tracking-widest bg-red-900/10 p-4 rounded-lg max-w-2xl mx-auto border border-red-900/30"></div>
+    <div id="filterContainer" class="flex justify-end mb-8 max-w-[1600px] mx-auto opacity-0 transition-opacity duration-500">
+        <div class="relative group">
+            <button onclick="toggleFilterMenu()" class="text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2 text-gray-400 hover:text-yellow-400 transition select-none bg-[#111827] px-4 py-2 rounded-full border border-gray-800">
+                <span id="currentFilterLabel">PLAYA</span>
+                <span class="text-[10px] mt-0.5">▾</span>
+            </button>
+            <div id="filterMenu" class="absolute top-full right-0 mt-2 min-w-[180px] flex flex-col hidden py-2 z-50 rounded-lg"></div>
+        </div>
+    </div>
+    <div id="catalogContainer" class="max-w-[1600px] mx-auto opacity-0 transition-opacity duration-500 flex flex-col gap-20"></div>
+  </main>
+
+  <footer class="bg-[#0b0f19] border-t border-gray-900 text-white py-6 mt-auto w-full px-6 md:px-12 relative z-40">
+    <div class="max-w-[1600px] mx-auto w-full flex flex-col md:flex-row justify-between items-center gap-6">
+        <div class="md:w-1/3 text-center md:text-left">
+            <h4 class="text-yellow-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">¿Quiénes Somos?</h4>
+            <p class="text-gray-400 text-[10px] leading-relaxed">Somos un colectivo de filmmakers dedicados a capturar la esencia del surf en la Costa Verde. Inmortalizamos tus mejores olas para que el mar viva siempre contigo.</p>
+        </div>
+        <div class="md:w-1/3 flex flex-col items-center justify-center gap-2">
+            <p class="text-[11px] text-gray-300 tracking-wide font-medium">¿Quieres tener material de tus mejores tubos, todo el mes?</p>
+            <div class="flex items-center gap-3">
+                <a href="https://wa.me/message/NMJN2HGX4EHSK1" target="_blank" class="inline-flex bg-[#facc15] text-black px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-white transition shadow-lg items-center gap-2">
+                   <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                   CONTÁCTANOS
+                </a>
+                <a href="https://www.instagram.com/freeridecv?igsh=NmU0bW5zcHRpNHln&utm_source=qr" target="_blank" class="bg-gray-800 text-gray-300 p-2.5 rounded-full hover:bg-yellow-400 hover:text-black transition shadow-lg flex items-center justify-center">
+                   <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                </a>
+            </div>
+        </div>
+        <div class="md:w-1/3 flex justify-center md:justify-end">
+            <a onclick="google.script.run.withSuccessHandler(url => window.top.location.href = url + '?p=biografias').getScriptUrl()" class="text-[10px] font-bold uppercase tracking-widest text-blue-500 hover:text-yellow-400 transition-colors flex items-center gap-2 group mx-auto md:mx-0 cursor-pointer">
+                Conoce a nuestro equipo
+                <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </a>
+        </div>
+    </div>
+    <div class="w-full max-w-[1600px] mx-auto h-px bg-gray-800/60 mt-6 mb-4"></div>
+    <div class="flex flex-col md:flex-row justify-center items-center text-[9px] text-gray-500 uppercase tracking-widest font-medium gap-2">
+        <p>© 2026 Free Ride | Designed by: <span class="text-white font-bold">Fabian Montoya</span></p>
+    </div>
+  </footer>
+
+  <div id="modalDetail" class="fixed inset-0 z-[90] hidden">
+    <div class="absolute inset-0 bg-black/90 backdrop-blur-sm transition-opacity" onclick="cerrarDetalle()"></div>
+    <div class="absolute inset-0 flex justify-center items-center pointer-events-none p-4">
+      <div class="bg-[#111827] border border-gray-800 w-full max-w-5xl max-h-[90vh] h-[85vh] md:h-auto overflow-hidden pointer-events-auto shadow-2xl flex flex-col md:flex-row modal-enter rounded-2xl">
+        <button onclick="cerrarDetalle()" class="absolute top-4 right-4 z-20 md:hidden text-2xl bg-black/50 rounded-full w-8 h-8 flex items-center justify-center text-white font-bold backdrop-blur-md">×</button>
+        <div class="w-full md:w-1/2 h-1/2 md:h-auto bg-black flex items-center justify-center p-4">
+             <img id="detailImg" class="w-full h-full object-contain" referrerpolicy="no-referrer">
+        </div>
+        <div class="w-full md:w-1/2 p-8 md:p-12 flex flex-col relative h-1/2 md:h-auto overflow-y-auto">
+            <button onclick="cerrarDetalle()" class="hidden md:block absolute top-6 right-6 text-3xl font-light hover:rotate-90 transition origin-center text-gray-500 hover:text-white">×</button>
+            <div class="flex-grow">
+                <p id="detailCategory" class="text-[10px] uppercase text-yellow-400 tracking-[0.2em] font-bold mb-3"></p>
+                <h2 id="detailName" class="text-3xl md:text-4xl font-black uppercase tracking-tight mb-2 text-white leading-none"></h2>
+                <p id="detailFilmmaker" class="text-sm md:text-base font-medium mb-8 text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span id="detailFilmmakerText"></span>
+                </p>
+                <p class="text-[10px] uppercase text-gray-600 tracking-widest mb-3 font-bold border-b border-gray-800 pb-2">Descripción</p>
+                <p id="detailDesc" class="text-sm text-gray-300 leading-relaxed whitespace-pre-line"></p>
+            </div>
+            <div class="mt-8 flex flex-col gap-3">
+                <button onclick="abrirWspObtener()" class="w-full bg-blue-600 text-white py-4 rounded-full text-xs tracking-[0.2em] font-bold uppercase hover:bg-yellow-400 hover:text-black transition shadow-lg">OBTENER FOTO</button>
+                <button onclick="cerrarDetalle()" class="w-full bg-transparent border border-gray-700 rounded-full text-gray-400 py-3 text-xs tracking-[0.2em] font-bold uppercase hover:bg-gray-800 hover:text-white transition">VOLVER</button>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalLogin" class="fixed inset-0 bg-black/95 z-[60] hidden flex justify-center items-center">
+    <div class="w-80 bg-[#111827] border border-gray-800 p-8 shadow-2xl flex flex-col gap-6 rounded-2xl">
+      <h2 class="text-xs font-bold tracking-[0.2em] mb-2 text-center text-white">ACCESO ADMIN</h2>
+      <input type="email" id="userEmail" placeholder="E-MAIL" class="input-masha text-sm" onkeydown="if(event.key === 'Enter') doLogin()">
+      <input type="password" id="userPass" placeholder="CONTRASEÑA" class="input-masha text-sm" onkeydown="if(event.key === 'Enter') doLogin()">
+      <button onclick="doLogin()" class="bg-blue-600 text-white py-4 rounded-full text-xs tracking-widest mt-4 hover:bg-blue-500 transition shadow-lg font-bold">ENTRAR</button>
+      <button onclick="cerrarLogin()" class="text-[10px] tracking-widest text-gray-500 hover:text-red-400 text-center uppercase font-bold transition">CANCELAR</button>
+    </div>
+  </div>
+
+  <div id="modalUsers" class="fixed inset-0 bg-[#0a0f18] z-[70] hidden flex flex-col p-8 overflow-y-auto animate-fade-in">
+    <div class="flex justify-between items-center mb-8 max-w-3xl mx-auto w-full">
+      <h2 class="text-2xl font-black text-white tracking-tight uppercase">Gestión de Filmmakers</h2>
+      <button onclick="cerrarModalUsers()" class="text-3xl font-light hover:rotate-90 transition text-gray-500 hover:text-white">×</button>
+    </div>
+    <div class="max-w-3xl mx-auto w-full flex flex-col gap-6">
+      <div class="bg-[#111827] border border-gray-800 p-6 rounded-2xl">
+        <h3 id="formUserTitle" class="text-xs font-bold text-yellow-400 uppercase tracking-widest mb-4">Añadir Nueva Cuenta</h3>
+        <input type="hidden" id="editUserId">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <input type="email" id="newFilmmakerEmail" class="input-masha text-sm" placeholder="Correo (Login)">
+            <input type="text" id="newFilmmakerPass" class="input-masha text-sm" placeholder="Contraseña">
+            <input type="text" id="newFilmmakerName" class="input-masha text-sm uppercase" placeholder="Alias (Ej: JUAN FOTO)">
+        </div>
+        <div class="flex gap-2">
+            <button id="btnSaveUser" onclick="crearFilmmaker()" class="w-full bg-blue-600 text-white py-3 rounded-full text-xs font-bold uppercase hover:bg-yellow-400 hover:text-black tracking-widest shadow-md transition">CREAR CUENTA</button>
+            <button id="btnCancelEditUser" onclick="cancelarEdicionUser()" class="hidden bg-gray-700 text-white px-6 py-3 rounded-full text-xs font-bold uppercase hover:bg-red-600 hover:text-white tracking-widest shadow-md transition">X</button>
+        </div>
+      </div>
+      
+      <div class="bg-[#111827] border border-gray-800 rounded-2xl overflow-hidden mt-4">
+        <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center bg-gray-900/50">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Cuentas Activas</span>
+        </div>
+        <div id="usersListContainer" class="flex flex-col"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalCats" class="fixed inset-0 bg-[#0a0f18] z-[70] hidden flex flex-col p-8 overflow-y-auto animate-fade-in">
+    <div class="flex justify-between items-center mb-8 max-w-lg mx-auto w-full">
+      <h2 class="text-2xl font-black text-white tracking-tight">PLAYAS</h2>
+      <button onclick="cerrarModalCats()" class="text-3xl font-light hover:rotate-90 transition text-gray-500 hover:text-white">×</button>
+    </div>
+    <div class="max-w-lg mx-auto w-full flex flex-col gap-6">
+      <div class="flex gap-2">
+        <input type="text" id="newCatName" class="input-masha text-lg uppercase font-bold text-white" placeholder="NUEVA PLAYA" onkeydown="if(event.key === 'Enter') agregarCat()">
+        <button onclick="agregarCat()" class="bg-blue-600 text-white px-6 rounded-full text-xs font-bold uppercase hover:bg-blue-500 tracking-widest shadow-md">AÑADIR</button>
+      </div>
+      <div id="catListContainer" class="flex flex-col gap-4 mt-4"></div>
+    </div>
+  </div>
+
+  <div id="modalAdd" class="fixed inset-0 bg-[#0a0f18] z-[70] hidden flex flex-col p-8 overflow-y-auto animate-fade-in">
+    <div class="flex justify-between items-center mb-8 max-w-lg mx-auto w-full">
+      <h2 id="modalTitle" class="text-2xl font-black text-white tracking-tight">NUEVA FOTO</h2>
+      <button onclick="cerrarModal()" class="text-3xl font-light hover:rotate-90 transition text-gray-500 hover:text-white">×</button>
+    </div>
+    <div class="max-w-lg mx-auto w-full flex flex-col gap-6">
+      <input type="hidden" id="editId">
+      <input type="hidden" id="currentImgUrl">
+      <input type="hidden" id="compressedBase64">
+      
+      <div class="grid grid-cols-2 gap-6">
+          <div>
+            <label class="text-[10px] uppercase text-gray-500 tracking-widest font-bold">Surfista</label>
+            <div class="relative w-full mt-2" id="customSurfWrapper">
+                <input type="hidden" id="prodSurf">
+                <div id="surfTrigger" class="bg-[#111827] border border-gray-800 rounded-lg px-4 py-3 text-sm font-medium cursor-pointer flex justify-between items-center text-white hover:border-gray-600 transition-colors" onclick="toggleSurfSelect()">
+                    <span id="surfDisplay" class="truncate">SELECCIONAR</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div id="surfOptions" class="absolute top-full left-0 w-full hidden z-50 max-h-48 overflow-y-auto flex flex-col mt-2 rounded-lg border border-gray-800 bg-[#111827]">
+                </div>
+            </div>
+          </div>
+          <div>
+            <label class="text-[10px] uppercase text-gray-500 tracking-widest font-bold">Playa</label>
+            <div class="relative w-full mt-2" id="customCatWrapper">
+                <input type="hidden" id="prodCat">
+                <div id="catTrigger" class="bg-[#111827] border border-gray-800 rounded-lg px-4 py-3 text-sm font-medium cursor-pointer flex justify-between items-center text-white hover:border-gray-600 transition-colors" onclick="toggleCustomSelect()">
+                    <span id="catDisplay" class="truncate">SELECCIONAR</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </div>
+                <div id="catOptions" class="absolute top-full left-0 w-full hidden z-50 max-h-48 overflow-y-auto flex flex-col mt-2 rounded-lg border border-gray-800 bg-[#111827]">
+                </div>
+            </div>
+          </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4">
+          <div>
+            <label class="text-[10px] uppercase text-gray-500 tracking-widest font-bold">Filmmaker</label>
+            <input type="text" id="prodPrice" class="input-masha text-base font-medium text-white uppercase transition-all" placeholder="FOTÓGRAFO / FILMMAKER" onkeydown="if(event.key === 'Enter') guardar()">
+          </div>
+      </div>
+
+      <div>
+        <label class="text-[10px] uppercase text-gray-500 tracking-widest font-bold">Descripción (Opcional)</label>
+        <textarea id="prodDesc" rows="3" class="input-masha text-sm text-gray-300 resize-none mt-2" placeholder="Condiciones, tamaño de la ola, momento..."></textarea>
+      </div>
+
+      <div class="flex flex-col gap-2 border-t border-gray-800 pt-6">
+          <div class="flex items-center gap-3">
+            <input type="checkbox" id="prodHidden" class="w-4 h-4 accent-red-600 cursor-pointer bg-gray-800 border-gray-700 rounded">
+            <label for="prodHidden" class="text-xs uppercase tracking-widest cursor-pointer font-bold text-red-500">OCULTAR DEL CATÁLOGO</label>
+          </div>
+      </div>
+
+      <div class="mt-2">
+        <label class="text-[10px] uppercase text-gray-500 tracking-widest font-bold mb-3 block">Fotografía</label>
+        <div id="uploadContainer">
+            <label class="flex flex-col items-center justify-center w-full h-40 border-2 border-gray-800 border-dashed cursor-pointer bg-[#111827] hover:bg-gray-800 transition-colors rounded-xl">
+                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                    <svg class="w-8 h-8 text-blue-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <span class="text-xs text-gray-400 font-bold uppercase tracking-widest">Subir Imagen</span>
+                </div>
+                <input id="prodFile" type="file" class="hidden" accept="image/*" onchange="previewAndCompressImage(this)" />
+            </label>
+        </div>
+        <div id="previewContainer" class="mt-2 w-full aspect-video md:aspect-square overflow-hidden hidden shadow-md border border-gray-800 relative group rounded-xl bg-[#111827]">
+             <img id="preview" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+             <button onclick="quitarImagen()" class="absolute top-3 right-3 bg-red-600/90 text-white text-[10px] font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-lg hover:bg-red-500 transition backdrop-blur-sm">Quitar</button>
+        </div>
+      </div>
+      <button id="btnSave" onclick="guardar()" class="bg-blue-600 text-white py-4 rounded-full text-xs tracking-[0.15em] mt-6 font-bold disabled:bg-gray-800 transition hover:bg-yellow-400 hover:text-black shadow-lg">GUARDAR FOTO</button>
+    </div>
+  </div>
+
+  <script>
+    let currentUserRole = null; 
+    let currentUserName = ''; 
+
+    let allProducts = []; 
+    let allCategories = [];
+    let allSurfistas = []; 
+    let isOrderChanged = false;
+    let sortables = [];
+    let currentFilter = 'TODAS LAS PLAYAS';
+    let currentUsersList = [];
+
+    window.onload = () => {
+      cargarDatos();
+      checkSession();
+      
+      document.addEventListener('click', function(e) {
+          const catWrapper = document.getElementById('customCatWrapper');
+          const catOptions = document.getElementById('catOptions');
+          const filterCont = document.getElementById('filterContainer');
+          const filterMenu = document.getElementById('filterMenu');
+          const surfWrapper = document.getElementById('customSurfWrapper');
+          const surfOptions = document.getElementById('surfOptions');
+
+          if (catWrapper && !catWrapper.contains(e.target)) { catOptions.classList.add('hidden'); }
+          if (filterCont && !filterCont.contains(e.target)) { filterMenu.classList.add('hidden'); }
+          if (surfWrapper && !surfWrapper.contains(e.target)) { surfOptions.classList.add('hidden'); }
+      });
+    };
+
+    function checkSession() {
+      const savedRole = localStorage.getItem('fr_role');
+      const savedName = localStorage.getItem('fr_name');
+      
+      if (savedRole && savedName) {
+          currentUserRole = savedRole;
+          currentUserName = savedName;
+          activarInterfaz();
+      } else {
+          google.script.url.getLocation(function(loc) {
+            if (loc.parameter.v === 'leolu') {
+              currentUserRole = 'MASTER';
+              currentUserName = 'MASTER';
+              localStorage.setItem('fr_role', 'MASTER');
+              localStorage.setItem('fr_name', 'MASTER');
+              activarInterfaz();
+            }
+          });
+      }
+    }
+
+    function checkUnsavedChanges() {
+        if (isOrderChanged) {
+            alert("⚠ TIENES CAMBIOS EN EL ORDEN PENDIENTES.\n\nPor favor, GUARDA o CANCELA (X) el nuevo orden antes de continuar.");
+            return true;
+        }
+        return false;
+    }
+
+    function cargarDatos() { 
+        document.getElementById('loader').style.display = 'flex';
+        document.getElementById('errorDisplay').classList.add('hidden');
+        document.getElementById('filterContainer').classList.remove('opacity-100');
+        
+        isOrderChanged = false;
+        document.getElementById('btnSaveOrder').classList.add('hidden');
+
+        google.script.run
+          .withSuccessHandler((surfs) => {
+              allSurfistas = surfs;
+              renderSurfInSelect();
+              
+              google.script.run
+                .withSuccessHandler((cats) => {
+                    allCategories = cats;
+                    if(!allCategories.includes('GENERAL')) allCategories.unshift('GENERAL');
+                    renderCatsInSelect();
+                    renderCatsInManager();
+                    
+                    google.script.run
+                        .withSuccessHandler(renderGrid)
+                        .withFailureHandler((err) => {
+                            document.getElementById('loader').style.display = 'none';
+                            document.getElementById('errorDisplay').innerText = "ERROR LEYENDO FOTOS: " + err.message;
+                            document.getElementById('errorDisplay').classList.remove('hidden');
+                        })
+                        .obtenerProductos(); 
+                })
+                .obtenerCategorias();
+          })
+          .obtenerSurfistas();
+    }
+
+    function getSafeUrl(val) {
+        if(!val) return 'https://via.placeholder.com/300/111827/FFFFFF?text=FREE+RIDE';
+        if(val.toString().includes('http')) return val;
+        return 'https://lh3.googleusercontent.com/d/' + val;
+    }
+
+    function guardarOrden() {
+        const btn = document.querySelector('#btnSaveOrder button:first-child');
+        const prevText = btn.innerText;
+        btn.innerText = "GUARDANDO...";
+        btn.disabled = true;
+
+        const productElements = document.querySelectorAll('.product-card-item');
+        const listaIds = Array.from(productElements).map(el => el.getAttribute('data-id'));
+
+        google.script.run
+            .withSuccessHandler(() => { 
+                btn.innerText = prevText;
+                btn.disabled = false;
+                cargarDatos(); 
+            })
+            .withFailureHandler(() => {
+                alert("Error de red guardando orden");
+                btn.innerText = prevText;
+                btn.disabled = false;
+            })
+            .guardarOrdenMasivo(listaIds);
+    }
+
+    function cancelarOrden() {
+      if(confirm('¿Descartar los cambios en el orden?')) {
+        cargarDatos();
+      }
+    }
+
+    function filtrarBusqueda(input) {
+        const term = input.value.toLowerCase().trim();
+        
+        if (term.length > 0) {
+            const filtered = allProducts.filter(p => 
+                (p.nombre && p.nombre.toLowerCase().includes(term)) ||
+                (p.filmmaker && p.filmmaker.toLowerCase().includes(term)) ||
+                (p.categoria && p.categoria.toLowerCase().includes(term))
+            );
+            renderGrid(filtered, true, true);
+        } else {
+            filtrarVista(currentFilter === 'TODAS LAS PLAYAS' ? 'GENERAL' : currentFilter);
+        }
+    }
+
+    function toggleFilterMenu() {
+        if(checkUnsavedChanges()) return;
+        const menu = document.getElementById('filterMenu');
+        menu.classList.toggle('hidden');
+    }
+
+    function filtrarVista(catNombre) {
+        document.getElementById('searchInput').value = '';
+        currentFilter = catNombre === 'GENERAL' ? 'TODAS LAS PLAYAS' : catNombre;
+        document.getElementById('currentFilterLabel').innerText = currentFilter;
+        document.getElementById('filterMenu').classList.add('hidden');
+        renderGrid(allProducts, true); 
+    }
+
+    function renderGrid(productos, localRender = false, isSearchMode = false) {
+      if (!localRender) allProducts = productos;
+      const container = document.getElementById('catalogContainer');
+      const filterMenu = document.getElementById('filterMenu');
+      
+      document.getElementById('loader').style.display = 'none';
+      container.innerHTML = '';
+      container.classList.remove('opacity-0');
+      document.getElementById('filterContainer').classList.add('opacity-100');
+
+      sortables.forEach(s => s.destroy());
+      sortables = [];
+
+      if (!productos || productos.length === 0) {
+        container.innerHTML = '<div class="text-center text-xs text-gray-500 mt-24 tracking-widest uppercase font-bold">No se encontraron fotos</div>';
+        return;
+      }
+
+      filterMenu.innerHTML = `<button class="text-[10px] uppercase tracking-widest py-3 px-6 hover:bg-gray-800 text-left w-full transition-colors font-bold text-gray-300" onclick="filtrarVista('GENERAL')">TODAS LAS PLAYAS</button>`;
+      
+      const groupedAll = {};
+      allCategories.forEach(c => groupedAll[c] = []);
+      if(!groupedAll['GENERAL']) groupedAll['GENERAL'] = [];
+      
+      allProducts.forEach(p => {
+        let cat = p.categoria ? p.categoria.toUpperCase() : 'GENERAL';
+        if (!groupedAll[cat]) cat = 'GENERAL';
+        groupedAll[cat].push(p);
+      });
+
+      const catsConProds = Object.keys(groupedAll).filter(c => groupedAll[c].length > 0 && c !== 'GENERAL');
+      catsConProds.forEach(cat => {
+          const btn = document.createElement('button');
+          btn.className = "text-[10px] uppercase tracking-widest py-3 px-6 hover:bg-gray-800 text-left w-full transition-colors font-bold text-gray-400";
+          btn.innerText = cat;
+          btn.onclick = () => filtrarVista(cat);
+          filterMenu.appendChild(btn);
+      });
+
+      const groupedRender = {};
+      allCategories.forEach(c => groupedRender[c] = []);
+      if(!groupedRender['GENERAL']) groupedRender['GENERAL'] = [];
+      
+      productos.forEach(p => {
+        let cat = p.categoria ? p.categoria.toUpperCase() : 'GENERAL';
+        if (!groupedRender[cat]) cat = 'GENERAL';
+        groupedRender[cat].push(p);
+      });
+
+      let catsToRender = [];
+
+      if (isSearchMode) {
+          catsToRender = Object.keys(groupedRender).filter(c => groupedRender[c].length > 0);
+      } else {
+          let realFilter = currentFilter === 'TODAS LAS PLAYAS' ? 'GENERAL' : currentFilter;
+          if (realFilter === 'GENERAL') {
+              catsToRender = Object.keys(groupedRender).filter(c => groupedRender[c].length > 0 && c !== 'GENERAL');
+              if(groupedRender['GENERAL'].length > 0) catsToRender.push('GENERAL'); 
+          } else {
+              if (groupedRender[realFilter] && groupedRender[realFilter].length > 0) {
+                  catsToRender = [realFilter];
+              }
+          }
+      }
+
+      catsToRender.forEach(catName => {
+        const section = document.createElement('div');
+        section.className = 'flex flex-col gap-6 mb-16';
+        section.id = 'section-' + catName.replace(/\s+/g, '');
+
+        if (catName !== 'GENERAL' || isSearchMode) {
+            const titleContainer = document.createElement('div');
+            titleContainer.className = 'flex items-center gap-4 mb-2';
+            
+            const lineLeft = document.createElement('div');
+            lineLeft.className = 'h-px bg-gray-800 flex-grow md:hidden';
+            
+            const title = document.createElement('h2');
+            title.className = 'text-xl font-black tracking-widest uppercase text-white';
+            title.innerText = catName === 'GENERAL' ? 'OTRAS FOTOS' : catName;
+            
+            const lineRight = document.createElement('div');
+            lineRight.className = 'h-px bg-gray-800 flex-grow';
+
+            titleContainer.appendChild(lineLeft);
+            titleContainer.appendChild(title);
+            titleContainer.appendChild(lineRight);
+            section.appendChild(titleContainer);
+        }
+
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-10 sortable-list';
+        grid.id = 'cat-' + catName.replace(/\s+/g, '');
+
+        groupedRender[catName].forEach(p => {
+            let isMaster = currentUserRole === 'MASTER';
+            let isOwner = (currentUserRole === 'FILMMAKER' && p.filmmaker && currentUserName && p.filmmaker.toUpperCase() === currentUserName.toUpperCase());
+            let canEdit = isMaster || isOwner;
+
+            if (!canEdit && p.oculto) return;
+
+            p.imagen = getSafeUrl(p.imagen);
+            const item = document.createElement('div');
+            item.className = 'product-card-item group relative flex flex-col cursor-pointer bg-[#0b0f19] rounded-xl overflow-hidden shadow-lg border border-gray-900 hover:border-gray-700 transition-colors';
+            item.setAttribute('data-id', p.id);
+            item.setAttribute('onclick', `verDetalle(${p.id})`);
+            
+            let adminBtns = '';
+            let hiddenBadge = '';
+
+            if (canEdit) {
+              if (p.oculto) {
+                  hiddenBadge = `<div class="absolute top-2 left-2 bg-red-600/90 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-1 z-30 uppercase tracking-widest rounded">OCULTO</div>`;
+                  item.classList.add('opacity-75');
+              }
+
+              adminBtns = `
+                <div class="absolute top-2 right-2 z-30 flex gap-2 pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onclick="event.stopPropagation(); editar(${p.id})" class="bg-blue-600 text-white w-8 h-8 flex items-center justify-center text-xs shadow-md hover:bg-yellow-400 hover:text-black transition rounded-full">✎</button>
+                  <button onclick="event.stopPropagation(); borrar(${p.id})" class="bg-gray-900 text-red-500 w-8 h-8 flex items-center justify-center text-sm shadow-md hover:bg-red-600 hover:text-white transition rounded-full font-bold">×</button>
+                </div>`;
+            }
+            
+            if (isMaster && !isSearchMode) {
+               item.classList.add('cursor-move');
+            }
+
+            let safeName = p.nombre || 'Surfista';
+            if (p.nombre && p.nombre.toUpperCase() === 'DESCONOCIDO') {
+                safeName = (p.categoria && p.categoria !== 'GENERAL') ? p.categoria : 'COSTA VERDE';
+            }
+            const safeFilm = p.filmmaker || 'Filmmaker';
+
+            item.innerHTML = `
+              <div class="relative w-full aspect-[4/5] overflow-hidden bg-[#111827]">
+                <img src="${p.imagen}" alt="Foto" loading="lazy" referrerpolicy="no-referrer" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" onerror="this.src='https://via.placeholder.com/300/111827/FFFFFF?text=FREE+RIDE';">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+                ${hiddenBadge} ${adminBtns}
+                <div class="absolute bottom-0 left-0 w-full p-4 flex flex-col gap-1">
+                    <span class="text-sm md:text-base font-black uppercase tracking-wide leading-tight text-white drop-shadow-md truncate">${safeName}</span>
+                    <span class="text-[10px] font-bold uppercase tracking-widest text-yellow-400 flex items-center gap-1.5 drop-shadow-md">
+                      <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                      ${safeFilm}
+                    </span>
+                </div>
+              </div>
+            `;
+            grid.appendChild(item);
+        });
+
+        if (grid.children.length > 0) {
+            section.appendChild(grid);
+            container.appendChild(section);
+
+            if(currentUserRole === 'MASTER' && !isSearchMode) {
+                const sortable = new Sortable(grid, {
+                    group: catName, animation: 150, ghostClass: 'sortable-ghost',
+                    onEnd: function (evt) { isOrderChanged = true; document.getElementById('btnSaveOrder').classList.remove('hidden'); }
+                });
+                sortables.push(sortable);
+            }
+        }
+      });
+    }
+
+    function activarInterfaz() {
+        document.getElementById('modalLogin').classList.add('hidden');
+        document.getElementById('loginText').innerText = 'LOGOUT';
+        document.getElementById('btnAdd').classList.remove('hidden');
+        
+        if(currentUserRole === 'MASTER') {
+            document.getElementById('btnCats').classList.remove('hidden');
+            document.getElementById('btnUsers').classList.remove('hidden');
+        } else {
+            document.getElementById('btnCats').classList.add('hidden');
+            document.getElementById('btnUsers').classList.add('hidden');
+        }
+        cargarDatos();
+    }
+
+    function toggleLogin() {
+      if(currentUserRole !== null) {
+        currentUserRole = null; currentUserName = ''; localStorage.removeItem('fr_role'); localStorage.removeItem('fr_name');
+        document.getElementById('loginText').innerText = 'LOGIN'; document.getElementById('btnAdd').classList.add('hidden');
+        document.getElementById('btnCats').classList.add('hidden'); document.getElementById('btnUsers').classList.add('hidden');
+        document.getElementById('btnSaveOrder').classList.add('hidden'); isOrderChanged = false; cargarDatos();
+      } else { 
+        document.getElementById('modalLogin').classList.remove('hidden'); setTimeout(() => document.getElementById('userEmail').focus(), 100);
+      }
+    }
+
+    function cerrarLogin() { document.getElementById('modalLogin').classList.add('hidden'); }
+
+    function doLogin() {
+      const email = document.getElementById('userEmail').value.trim(); const pass = document.getElementById('userPass').value.trim();
+      const btn = document.getElementById('btnEntrar'); btn.innerText = 'VERIFICANDO...'; btn.disabled = true;
+
+      google.script.run
+          .withSuccessHandler((res) => {
+              btn.innerText = 'ENTRAR'; btn.disabled = false;
+              if(res.success) {
+                  currentUserRole = res.role; currentUserName = res.nombre;
+                  localStorage.setItem('fr_role', res.role); localStorage.setItem('fr_name', res.nombre);
+                  document.getElementById('userEmail').value = ''; document.getElementById('userPass').value = ''; activarInterfaz();
+              } else { alert(res.error); }
+          })
+          .withFailureHandler(() => { btn.innerText = 'ENTRAR'; btn.disabled = false; alert('Error de conexión'); })
+          .validarAcceso(email, pass);
+    }
+
+    function abrirModalUsers() { document.getElementById('modalUsers').classList.remove('hidden'); cargarUsuarios(); }
+    function cerrarModalUsers() { document.getElementById('modalUsers').classList.add('hidden'); cancelarEdicionUser(); }
+    function cargarUsuarios() {
+        document.getElementById('usersListContainer').innerHTML = `<p class="text-xs text-gray-500 text-center py-4">Cargando...</p>`;
+        google.script.run.withSuccessHandler(renderUsers).obtenerUsuarios();
+    }
+    function renderUsers(users) {
+        currentUsersList = users;
+        const container = document.getElementById('usersListContainer'); container.innerHTML = '';
+        if(users.length === 0) { container.innerHTML = `<p class="text-xs text-gray-500 text-center py-4">No hay filmmakers registrados.</p>`; return; }
+        users.forEach(u => {
+            container.innerHTML += `
+                <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center hover:bg-gray-800/50 transition">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-white uppercase">${u.nombre}</span>
+                        <span class="text-[10px] text-gray-400">${u.email} <span class="mx-1">•</span> Clave: ${u.pass}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="editarFilmmaker(${u.id})" class="bg-blue-600 w-8 h-8 rounded-full text-white text-xs hover:bg-yellow-400 hover:text-black shadow-md transition">✎</button>
+                        <button onclick="eliminarFilmmaker(${u.id})" class="bg-gray-900 w-8 h-8 rounded-full text-red-500 text-xs hover:bg-red-600 hover:text-white shadow-md transition">×</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    function editarFilmmaker(id) {
+        const u = currentUsersList.find(x => x.id == id); if(!u) return;
+        document.getElementById('formUserTitle').innerText = 'EDITAR CUENTA'; document.getElementById('editUserId').value = u.id;
+        document.getElementById('newFilmmakerEmail').value = u.email; document.getElementById('newFilmmakerPass').value = u.pass;
+        document.getElementById('newFilmmakerName').value = u.nombre;
+        document.getElementById('btnSaveUser').innerText = 'GUARDAR CAMBIOS'; document.getElementById('btnCancelEditUser').classList.remove('hidden');
+    }
+    function cancelarEdicionUser() {
+        document.getElementById('formUserTitle').innerText = 'Añadir Nueva Cuenta'; document.getElementById('editUserId').value = '';
+        document.getElementById('newFilmmakerEmail').value = ''; document.getElementById('newFilmmakerPass').value = ''; document.getElementById('newFilmmakerName').value = '';
+        document.getElementById('btnSaveUser').innerText = 'CREAR CUENTA'; document.getElementById('btnCancelEditUser').classList.add('hidden');
+    }
+    function crearFilmmaker() {
+        const id = document.getElementById('editUserId').value;
+        const email = document.getElementById('newFilmmakerEmail').value.trim(); const pass = document.getElementById('newFilmmakerPass').value.trim(); const name = document.getElementById('newFilmmakerName').value.trim();
+        if(!email || !pass || !name) { alert("Llena todos los campos"); return; }
+        const btn = document.getElementById('btnSaveUser'); btn.innerText = "GUARDANDO..."; btn.disabled = true;
+        document.getElementById('usersListContainer').innerHTML = `<p class="text-xs text-gray-500 text-center py-4">Procesando...</p>`;
+        google.script.run
+            .withSuccessHandler(users => { cancelarEdicionUser(); btn.disabled = false; renderUsers(users); })
+            .withFailureHandler(e => { alert("Error al guardar usuario"); btn.innerText = id ? "GUARDAR CAMBIOS" : "CREAR CUENTA"; btn.disabled = false; })
+            .guardarUsuario(id, email, pass, name);
+    }
+    function eliminarFilmmaker(id) {
+        if(!confirm("¿Eliminar este acceso?")) return;
+        document.getElementById('usersListContainer').innerHTML = `<p class="text-xs text-gray-500 text-center py-4">Borrando...</p>`;
+        google.script.run.withSuccessHandler(renderUsers).borrarUsuario(id);
+    }
+
+    function abrirModalCats() { if(checkUnsavedChanges()) return; document.getElementById('modalCats').classList.remove('hidden'); renderCatsInManager(); }
+    function cerrarModalCats() { document.getElementById('modalCats').classList.add('hidden'); }
+    function toggleCustomSelect() { document.getElementById('catOptions').classList.toggle('hidden'); }
+    function selectOption(val) { document.getElementById('prodCat').value = val; document.getElementById('catDisplay').innerText = val; document.getElementById('catOptions').classList.add('hidden'); }
+    function renderCatsInSelect() {
+        const listContainer = document.getElementById('catOptions'); listContainer.innerHTML = '';
+        allCategories.forEach(cat => {
+            if(cat !== 'GENERAL') {
+                const item = document.createElement('div');
+                item.className = 'py-3 px-4 bg-[#111827] hover:bg-gray-800 border-b border-gray-800 cursor-pointer text-xs font-bold uppercase tracking-widest transition-colors text-white';
+                item.innerText = cat; item.onclick = () => selectOption(cat); listContainer.appendChild(item);
+            }
+        });
+    }
+    function renderCatsInManager() {
+      const div = document.getElementById('catListContainer'); div.innerHTML = '';
+      allCategories.forEach(cat => {
+        if(cat === 'GENERAL') return;
+        const row = document.createElement('div'); row.className = 'flex justify-between items-center border-b border-gray-800 py-4';
+        row.innerHTML = `<span class="text-sm font-bold text-white tracking-wide">${cat}</span><button onclick="borrarCat('${cat}')" class="text-xs font-black text-red-500 hover:text-red-400 uppercase tracking-widest bg-red-900/20 px-4 py-2 rounded-full transition-colors">Borrar</button>`;
+        div.appendChild(row);
+      });
+    }
+    function agregarCat() {
+      const input = document.getElementById('newCatName'); const val = input.value.trim().toUpperCase(); if(!val) return;
+      google.script.run.withSuccessHandler((cats) => { allCategories = cats; if(!allCategories.includes('GENERAL')) allCategories.unshift('GENERAL'); renderCatsInSelect(); renderCatsInManager(); input.value = ''; }).guardarCategoria(val);
+    }
+    function borrarCat(nombre) {
+      if(!confirm('¿Borrar playa?')) return;
+      google.script.run.withSuccessHandler((cats) => { allCategories = cats; if(!allCategories.includes('GENERAL')) allCategories.unshift('GENERAL'); renderCatsInSelect(); renderCatsInManager(); }).eliminarCategoria(nombre);
+    }
+    function toggleSurfSelect() { document.getElementById('surfOptions').classList.toggle('hidden'); }
+    function selectSurfOption(val) { 
+        document.getElementById('prodSurf').value = val; 
+        document.getElementById('surfDisplay').innerText = val || "SELECCIONAR"; 
+        document.getElementById('surfOptions').classList.add('hidden'); 
+    }
+    function renderSurfInSelect() {
+        const listContainer = document.getElementById('surfOptions'); 
+        listContainer.innerHTML = '';
+
+        const itemDesc = document.createElement('div');
+        itemDesc.className = 'py-3 px-4 bg-[#111827] hover:bg-gray-800 border-b border-gray-800 cursor-pointer text-xs font-bold uppercase tracking-widest transition-colors text-white';
+        itemDesc.innerText = 'DESCONOCIDO'; 
+        itemDesc.onclick = () => selectSurfOption('Desconocido'); 
+        listContainer.appendChild(itemDesc);
+
+        allSurfistas.forEach(s => {
+            const item = document.createElement('div');
+            item.className = 'py-3 px-4 bg-[#111827] hover:bg-gray-800 border-b border-gray-800 cursor-pointer text-xs font-bold uppercase tracking-widest transition-colors text-white';
+            item.innerText = s.nombre; 
+            item.onclick = () => selectSurfOption(s.nombre); 
+            listContainer.appendChild(item);
+        });
+    }
+
+    function verDetalle(id) {
+      if(checkUnsavedChanges()) return;
+      const p = allProducts.find(item => item.id == id); if(!p) return;
+
+      document.getElementById('detailImg').src = p.imagen; 
+      
+      let displayDetailName = p.nombre || 'Surfista';
+      if (p.nombre && p.nombre.toUpperCase() === 'DESCONOCIDO') {
+          displayDetailName = 'Free Rider';
+      }
+      
+      document.getElementById('detailName').innerText = displayDetailName;
+      document.getElementById('detailFilmmakerText').innerText = p.filmmaker || 'DESCONOCIDO';
+      document.getElementById('detailCategory').innerText = p.categoria && p.categoria !== 'GENERAL' ? p.categoria : 'COSTA VERDE';
+      document.getElementById('detailDesc').innerText = p.descripcion || "";
+
+      document.getElementById('modalDetail').classList.remove('hidden'); document.body.style.overflow = 'hidden'; 
+    }
+    function cerrarDetalle() { document.getElementById('modalDetail').classList.add('hidden'); document.body.style.overflow = ''; }
+    
+    function abrirWspObtener() {
+        const surfista = document.getElementById('detailName').innerText; const filmmaker = document.getElementById('detailFilmmakerText').innerText; const playa = document.getElementById('detailCategory').innerText;
+        window.open(`https://wa.me/51934816869?text=${encodeURIComponent(`¡Hola! Me gustaría obtener esta foto del catálogo de Free Ride:\n\nSurfista: ${surfista}\nFilmmaker: ${filmmaker}\nPlaya: ${playa}`)}`, '_blank');
+    }
+
+    function abrirModal(modoEdicion = false) { 
+      if(checkUnsavedChanges()) return;
+      document.getElementById('modalAdd').classList.remove('hidden'); document.body.style.overflow = 'hidden';
+      if (!modoEdicion) { document.getElementById('modalTitle').innerText = 'NUEVA FOTO'; document.getElementById('btnSave').innerText = 'GUARDAR FOTO'; limpiarFormulario(); }
+    }
+    
+    function editar(id) {
+      if(checkUnsavedChanges()) return;
+      const prod = allProducts.find(p => p.id == id); if(!prod) return;
+      abrirModal(true); 
+      document.getElementById('modalTitle').innerText = 'EDITAR FOTO #' + prod.id; document.getElementById('btnSave').innerText = 'ACTUALIZAR CAMBIOS';
+      document.getElementById('editId').value = prod.id; document.getElementById('currentImgUrl').value = prod.imagen;
+      document.getElementById('prodDesc').value = prod.descripcion;
+      
+      selectSurfOption(prod.nombre);
+      const catVal = (prod.categoria === 'GENERAL' || !prod.categoria) ? '' : prod.categoria;
+      if(catVal) { selectOption(catVal); } else { document.getElementById('prodCat').value = ''; document.getElementById('catDisplay').innerText = 'SELECCIONAR'; }
+      
+      const inputFilm = document.getElementById('prodPrice'); inputFilm.value = prod.filmmaker; 
+      if(currentUserRole === 'FILMMAKER') { inputFilm.readOnly = true; inputFilm.classList.add('opacity-50', 'cursor-not-allowed'); } 
+      else { inputFilm.readOnly = false; inputFilm.classList.remove('opacity-50', 'cursor-not-allowed'); }
+      
+      document.getElementById('prodHidden').checked = !!prod.oculto;
+      document.getElementById('preview').src = prod.imagen; document.getElementById('previewContainer').classList.remove('hidden'); document.getElementById('uploadContainer').classList.add('hidden');
+    }
+    
+    function cerrarModal() { document.getElementById('modalAdd').classList.add('hidden'); document.body.style.overflow = ''; limpiarFormulario(); }
+    function quitarImagen() { document.getElementById('prodFile').value = ''; document.getElementById('compressedBase64').value = ''; document.getElementById('previewContainer').classList.add('hidden'); document.getElementById('uploadContainer').classList.remove('hidden'); }
+    
+    function limpiarFormulario() {
+      document.getElementById('editId').value = ''; document.getElementById('currentImgUrl').value = ''; document.getElementById('compressedBase64').value = ''; document.getElementById('prodDesc').value = ''; document.getElementById('prodFile').value = ''; 
+      
+      const inputFilm = document.getElementById('prodPrice');
+      if(currentUserRole === 'FILMMAKER') { inputFilm.value = currentUserName; inputFilm.readOnly = true; inputFilm.classList.add('opacity-50', 'cursor-not-allowed'); } 
+      else { inputFilm.value = ''; inputFilm.readOnly = false; inputFilm.classList.remove('opacity-50', 'cursor-not-allowed'); }
+      
+      document.getElementById('prodCat').value = ''; document.getElementById('catDisplay').innerText = 'SELECCIONAR';
+      document.getElementById('prodSurf').value = ''; document.getElementById('surfDisplay').innerText = 'SELECCIONAR';
+      
+      document.getElementById('prodHidden').checked = false; document.getElementById('previewContainer').classList.add('hidden'); document.getElementById('uploadContainer').classList.remove('hidden');
+    }
+
+    function guardar() {
+      const id = document.getElementById('editId').value;
+      const nombre = document.getElementById('prodSurf').value; 
+      const desc = document.getElementById('prodDesc').value;
+      const filmmaker = document.getElementById('prodPrice').value;
+      const cat = document.getElementById('prodCat').value;
+      const compressedImg = document.getElementById('compressedBase64').value;
+      let currentUrl = document.getElementById('currentImgUrl').value;
+      const hidden = document.getElementById('prodHidden').checked;
+
+      const hayFoto = compressedImg || (id && currentUrl && document.getElementById('uploadContainer').classList.contains('hidden'));
+
+      if(!nombre || !filmmaker || !hayFoto || !cat) { alert('Faltan datos (Surfista, Filmmaker, Playa o Foto).'); return; }
+
+      const btn = document.getElementById('btnSave'); btn.innerText = 'PROCESANDO...'; btn.disabled = true;
+
+      const payload = { id: id || null, nombre: nombre, descripcion: desc, filmmaker: filmmaker, categoria: cat, imagenBase64: compressedImg || null, imagenActual: currentUrl, oculto: hidden };
+
+      google.script.run
+          .withSuccessHandler((res) => {
+              btn.innerText = id ? 'ACTUALIZAR CAMBIOS' : 'GUARDAR FOTO'; btn.disabled = false;
+              if(res.success) { cerrarModal(); cargarDatos(); } else { alert('Error: ' + res.error); }
+          })
+          .withFailureHandler((err) => { alert("Error de red guardando foto"); btn.disabled = false; })
+          .procesarProducto(payload);
+    }
+
+    function borrar(id) {
+      if(checkUnsavedChanges()) return;
+      if(confirm('¿Eliminar foto?')) { google.script.run.withSuccessHandler((res) => { if(res.success) cargarDatos(); }).borrarProducto(id); }
+    }
+  </script>
+</body>
+</html>
