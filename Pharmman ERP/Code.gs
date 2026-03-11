@@ -1,16 +1,16 @@
 const ID_HOJA = "";
 
 const DB_USUARIOS = {
-  "davis":     { pass: "Pharman091510.", roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
-  "grace":     { pass: "Pharman091510.", roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
-  "marissa":   { pass: "nico",           roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
-  "fabian":    { pass: "masha",          roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
-  "jhair":     { pass: "Pharman2025",    roles: ["S","OC", "IR", "PC"] },
-  "kimberly":  { pass: "Pharman2025",    roles: ["S","OC", "IR"] },
-  "rafael":    { pass: "BartoloMew123#", roles: ["M","OC", "PC"] },
-  "alvaro":    { pass: "Pharman2025",    roles: ["SMP", "M"] },
-  "sebastian": { pass: "Pharman2025",    roles: ["S"] },
-  "paola":     { pass: "Pharman2025",    roles: ["S"] }
+  "davis":     { pass: "", roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
+  "grace":     { pass: "", roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
+  "marissa":   { pass: "",           roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
+  "fabian":    { pass: "",          roles: ["M", "S", "SMP", "OC", "IR", "PC"] },
+  "jhair":     { pass: "",    roles: ["S","OC", "IR", "PC"] },
+  "kimberly":  { pass: "",    roles: ["S","OC", "IR"] },
+  "rafael":    { pass: "", roles: ["M","OC", "PC"] },
+  "alvaro":    { pass: "",    roles: ["SMP", "M"] },
+  "sebastian": { pass: "",    roles: ["S"] },
+  "paola":     { pass: "",    roles: ["S"] }
 };
 
 function normalizarTexto(texto) {
@@ -429,21 +429,38 @@ function procesarListaAnulacionTraslado(data, sedeRecibida, usuario) {
     let motivo = data.motivo || "Sin detalle";
     let etiquetaMov = (tipoAccion === "RESTAURAR") ? "ANULACION DE SALIDAS (+)" : "ANULACION DE INGRESOS (-)";
     
-    data.lista.forEach(item => {
-      let nombreProd = item.producto ? item.producto.toString().trim() : "";
-      if (nombreProd === "") return;
+    let operacionesSeguras = [];
+    for (let i = 0; i < data.lista.length; i++) {
+        let item = data.lista[i];
+        let nombreProd = item.producto ? item.producto.toString().trim() : "";
+        if (nombreProd === "") continue;
 
-      let idx = mapaInv[normalizarTexto(nombreProd)];
-      if (idx !== undefined) {
+        let idx = mapaInv[normalizarTexto(nombreProd)];
+        if (idx === undefined) return `Error: El producto ${nombreProd} no existe.`;
+
         let celdaStock = sInv.getRange(idx + 1, 2);
         let stockActual = parseInt(celdaStock.getValue()) || 0;
         let cantOperacion = parseInt(item.cantidad);
-        let nuevoStock = (tipoAccion === "RESTAURAR") ? stockActual + cantOperacion : stockActual - cantOperacion;
-        
-        celdaStock.setValue(nuevoStock);
-      }
-      sMov.appendRow([etiquetaMov, nombreProd, parseInt(item.cantidad), fecha, "-", usuario, "CORRECCION", motivo]);
+
+        if (tipoAccion === "ELIMINAR" && (stockActual - cantOperacion < 0)) {
+            return `Error: Stock insuficiente para ${nombreProd}. Hay ${stockActual} unidades y se intentó descontar ${cantOperacion}. Operación cancelada.`;
+        }
+
+        operacionesSeguras.push({
+            nombreProd: nombreProd,
+            celdaStock: celdaStock,
+            stockActual: stockActual,
+            cantOperacion: cantOperacion
+        });
+    }
+
+    operacionesSeguras.forEach(op => {
+      let nuevoStock = (tipoAccion === "RESTAURAR") ? op.stockActual + op.cantOperacion : op.stockActual - op.cantOperacion;
+      op.celdaStock.setValue(nuevoStock);
+      sMov.appendRow([etiquetaMov, op.nombreProd, op.cantOperacion, fecha, "-", usuario, "CORRECCION", motivo]);
     });
+
+    SpreadsheetApp.flush();
     return "Corrección procesada.";
   } catch(e) { return "Error: " + e.message; } finally { lock.releaseLock(); }
 }
@@ -586,7 +603,6 @@ function inicializarTablas() {
     });
   });
 }
-
 
 function probarReporteSemanalManual() {
   const hoy = new Date();
