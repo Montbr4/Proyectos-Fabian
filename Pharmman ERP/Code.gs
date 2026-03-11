@@ -205,6 +205,7 @@ function registrarVentaCompleta(data, sedeRecibida, usuario) {
       }
 
       let deducciones = {};
+      let filasAgregadasVenta = [];
 
       data.carrito.forEach(item => {
         let nombreProducto = item.nombre ? item.nombre.toString().trim() : "";
@@ -214,6 +215,7 @@ function registrarVentaCompleta(data, sedeRecibida, usuario) {
         totalCalculado += totalLinea;
         
         sVenta.appendRow([fecha, data.idVenta, data.tienda, item.cantidad, nombreProducto, item.precioVenta, totalLinea, usuario, ""]);
+        let filaVentaActual = sVenta.getLastRow();
 
         if (item.esPack && item.componentes) {
             item.componentes.forEach(comp => {
@@ -229,17 +231,52 @@ function registrarVentaCompleta(data, sedeRecibida, usuario) {
             let normProd = normalizarTexto(nombreProducto);
             if (normProd) deducciones[normProd] = (deducciones[normProd] || 0) + parseInt(item.cantidad);
         }
+        
+        filasAgregadasVenta.push({
+            fila: filaVentaActual,
+            esPack: item.esPack,
+            nombreOriginal: nombreProducto,
+            componentes: item.componentes
+        });
       });
       
+      let productosAgotados = new Set();
+
       for (let prodNorm in deducciones) {
           let idx = mapaInv[prodNorm];
           if (idx !== undefined) {
               let celdaStock = sInventario.getRange(idx + 1, 2);
               let stockReal = parseInt(celdaStock.getValue()) || 0;
               let cantADescontar = deducciones[prodNorm];
-              celdaStock.setValue(stockReal - cantADescontar);
+              let stockFinal = stockReal - cantADescontar;
+              
+              celdaStock.setValue(stockFinal);
+              
+              if (stockFinal <= 0) {
+                  productosAgotados.add(prodNorm);
+              }
           }
       }
+      
+      filasAgregadasVenta.forEach(obj => {
+          let debePintarse = false;
+          if (obj.esPack && obj.componentes) {
+              for (let comp of obj.componentes) {
+                  if (productosAgotados.has(normalizarTexto(comp.nombre))) {
+                      debePintarse = true;
+                      break;
+                  }
+              }
+          } else {
+              if (productosAgotados.has(normalizarTexto(obj.nombreOriginal))) {
+                  debePintarse = true;
+              }
+          }
+          
+          if (debePintarse) {
+              try { sVenta.getRange(obj.fila, 5).setBackground("#ea9999"); } catch(e){}
+          }
+      });
       
       let prodResumen = data.carrito
           .filter(p => p.nombre && p.nombre.toString().trim() !== "")
@@ -603,6 +640,7 @@ function inicializarTablas() {
     });
   });
 }
+
 
 function probarReporteSemanalManual() {
   const hoy = new Date();
