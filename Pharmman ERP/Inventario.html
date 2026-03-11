@@ -300,6 +300,7 @@
       function agregarALista() {
         const prod = document.getElementById('productoMov').value;
         const cant = parseInt(document.getElementById('cantidadMov').value);
+        const tipo = document.getElementById('tipoMov').value;
 
         if (!prod) return;
         if (cant <= 0) return alert("Cantidad inválida");
@@ -307,6 +308,14 @@
         const existe = listaMovimientos.find(i => i.producto === prod);
         if (existe) {
             return alert("Este producto ya está en la lista.");
+        }
+
+        if (tipo !== "INGRESO") {
+            let prodObj = inventarioMov.find(p => p.nombre === prod);
+            let stockActual = prodObj ? prodObj.stock : 0;
+            if (stockActual < cant) {
+                return alert(`Error: Stock insuficiente.\n\nSolo hay ${stockActual} unidades disponibles de "${prod}".`);
+            }
         }
 
         listaMovimientos.push({ producto: prod, cantidad: cant });
@@ -343,6 +352,17 @@
 
       function modCant(index, delta) {
         let nuevo = listaMovimientos[index].cantidad + delta;
+        const tipo = document.getElementById('tipoMov').value;
+        
+        if (delta > 0 && tipo !== "INGRESO") {
+            let prodName = listaMovimientos[index].producto;
+            let prodObj = inventarioMov.find(p => p.nombre === prodName);
+            let stockActual = prodObj ? prodObj.stock : 0;
+            if (stockActual < nuevo) {
+                return alert(`Límite alcanzado.\n\nEl stock actual de "${prodName}" es de ${stockActual} unidades.`);
+            }
+        }
+
         if (nuevo > 0) {
             listaMovimientos[index].cantidad = nuevo;
             renderTabla();
@@ -389,9 +409,12 @@
                     descargarExcelTraslado(listaMovimientos, destino);
                 }
 
-                listaMovimientos = [];
+                if (r.includes("correctamente")) {
+                    listaMovimientos = [];
+                    document.getElementById('tipoMov').disabled = false;
+                }
+                
                 renderTabla();
-                document.getElementById('tipoMov').disabled = false;
                 verificarTipoMovimiento();
                 cargarProds();
                 btn.disabled = false;
