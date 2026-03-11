@@ -454,6 +454,7 @@
       function agregarAnulacionList() {
         const prod = document.getElementById('productoAnul').value;
         const cant = parseInt(document.getElementById('cantAnul').value);
+        const tipoAnulacion = document.getElementById('tipoAnulacion').value;
 
         if (!prod) return;
         if (cant <= 0) return alert("Cantidad inválida");
@@ -461,6 +462,14 @@
         const existe = listaAnulacion.find(i => i.producto === prod);
         if (existe) {
             return alert("Producto ya en lista de anulación.");
+        }
+
+        if (tipoAnulacion === "ELIMINAR") {
+            let prodObj = inventarioMov.find(p => p.nombre === prod);
+            let stockActual = prodObj ? prodObj.stock : 0;
+            if (stockActual < cant) {
+                return alert(`Error: Stock insuficiente.\n\nNo puedes anular ${cant} unidades. El stock actual de "${prod}" es de solo ${stockActual}.`);
+            }
         }
 
         listaAnulacion.push({ producto: prod, cantidad: cant });
@@ -517,9 +526,11 @@
         google.script.run
         .withSuccessHandler(r => {
             alert(r);
-            listaAnulacion = [];
-            document.getElementById('motivoAnulacion').value = '';
-            renderTablaAnulacion();
+            if (r.includes("procesada")) {
+                listaAnulacion = [];
+                document.getElementById('motivoAnulacion').value = '';
+                renderTablaAnulacion();
+            }
             cargarProds();
             btn.disabled = false;
             btn.innerText = "CONFIRMAR CORRECCIÓN";
