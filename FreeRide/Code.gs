@@ -1,5 +1,5 @@
 function doGet(e) {
-  let page = e.parameter.p;
+  let page = (e && e.parameter) ? e.parameter.p : null;
   
   if (page === 'biografias') {
     try { return HtmlService.createHtmlOutputFromFile('Biografias').setTitle('Free Ride - Nuestro Equipo').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL).addMetaTag('viewport', 'width=device-width, initial-scale=1'); } 
@@ -289,7 +289,7 @@ function obtenerMerch() {
 function procesarMerch(info) {
   try {
     const sheet = getSheet('Merch');
-    const FOLDER_ID = "16nxEBk6_LpDPztROIgR689Mj4YUFRn5P"; 
+    const FOLDER_ID = ""; 
     let fileIdOrUrl = info.imagenActual;
     if (info.imagenBase64) {
       const partes = info.imagenBase64.split(","); 
