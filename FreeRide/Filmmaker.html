@@ -14,6 +14,13 @@
     @keyframes spin { 100% { transform: rotate(360deg); } }
     .modal-enter { animation: modalIn 0.3s ease-out forwards; }
     @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    
+    /* === SCROLLBAR ESTÉTICO PARA EL MODAL === */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+    * { scrollbar-width: thin; scrollbar-color: #374151 transparent; }
   </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -65,8 +72,8 @@
      <p>© 2026 Free Ride | Designed by: Fabian Montoya</p>
   </footer>
 
-  <div id="modalAdd" class="fixed inset-0 bg-black/95 z-[70] hidden flex flex-col p-8 items-center justify-center">
-    <div class="bg-[#111827] border border-gray-800 p-8 rounded-2xl w-full max-w-md shadow-2xl relative">
+  <div id="modalAdd" class="fixed inset-0 bg-black/95 z-[70] hidden flex flex-col items-center justify-start p-4 md:p-10 overflow-y-auto">
+    <div class="bg-[#111827] border border-gray-800 p-6 md:p-8 rounded-2xl w-full max-w-md shadow-2xl relative max-h-[90vh] overflow-y-auto flex flex-col modal-enter">
         <button onclick="cerrarModal()" class="absolute top-4 right-4 text-2xl text-gray-500 hover:text-white">×</button>
         <h2 id="modalTitle" class="text-xl font-black text-white tracking-tight mb-6 uppercase">AÑADIR ARTÍCULO</h2>
         
@@ -100,16 +107,19 @@
             </div>
 
             <div class="mt-2">
-                <label class="text-[10px] uppercase text-gray-500 tracking-widest font-bold mb-2 block">Foto del Producto</label>
+                <label class="text-[10px] uppercase text-gray-500 tracking-widest font-bold mb-3 block">Foto del Producto</label>
                 <div id="uploadContainer">
-                    <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-800 border-dashed cursor-pointer bg-[#0b0f19] hover:bg-gray-800 transition-colors rounded-xl">
-                        <span class="text-[10px] text-blue-500 font-bold uppercase tracking-widest">Subir Imagen</span>
+                    <label class="flex flex-col items-center justify-center w-full h-40 border-2 border-gray-800 border-dashed cursor-pointer bg-[#111827] hover:bg-gray-800 transition-colors rounded-xl">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <svg class="w-8 h-8 text-blue-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <span class="text-xs text-gray-400 font-bold uppercase tracking-widest">Subir Imagen</span>
+                        </div>
                         <input id="merchFile" type="file" class="hidden" accept="image/*" onchange="previewAndCompressImage(this)" />
                     </label>
                 </div>
-                <div id="previewContainer" class="mt-2 w-full aspect-square overflow-hidden hidden shadow-md border border-gray-800 relative rounded-xl">
-                    <img id="preview" class="w-full h-full object-cover">
-                    <button onclick="quitarImagen()" class="absolute top-2 right-2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full font-bold uppercase">Quitar</button>
+                <div id="previewContainer" class="mt-2 w-full aspect-square overflow-hidden hidden shadow-md border border-gray-800 relative rounded-xl bg-[#111827]">
+                     <img id="preview" class="w-full h-full object-cover" referrerpolicy="no-referrer">
+                     <button onclick="quitarImagen()" class="absolute top-3 right-3 bg-red-600/90 text-white text-[10px] font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-lg hover:bg-red-500 transition backdrop-blur-sm">Quitar</button>
                 </div>
             </div>
 
@@ -121,8 +131,8 @@
   <div id="modalLogin" class="fixed inset-0 bg-black/95 z-[60] hidden flex justify-center items-center">
     <div class="w-80 bg-[#111827] border border-gray-800 p-8 shadow-2xl flex flex-col gap-6 rounded-2xl">
       <h2 class="text-xs font-bold tracking-[0.2em] mb-2 text-center text-white">ACCESO AL SISTEMA</h2>
-      <input type="email" id="userEmail" placeholder="CORREO" class="input-masha text-sm" onkeydown="if(event.key === 'Enter') doLogin()">
-      <input type="password" id="userPass" placeholder="CONTRASEÑA" class="input-masha text-sm" onkeydown="if(event.key === 'Enter') doLogin()">
+      <input type="email" id="userEmail" placeholder="CORREO" class="input-masha text-sm">
+      <input type="password" id="userPass" placeholder="CONTRASEÑA" class="input-masha text-sm">
       <button id="btnEntrar" onclick="doLogin()" class="bg-blue-600 text-white py-4 rounded-full text-xs tracking-widest mt-4 hover:bg-blue-500 transition shadow-lg font-bold">ENTRAR</button>
       <button onclick="cerrarLogin()" class="text-[10px] tracking-widest text-gray-500 hover:text-red-400 text-center uppercase font-bold transition">CANCELAR</button>
     </div>
@@ -133,42 +143,62 @@
     let currentUserName = ''; 
     let merchList = [];
 
-    window.onload = () => { 
-        cargarDatos(); 
-        checkSession(); 
-    };
+    window.onload = () => { checkSession(); };
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modales = [
+                {id: 'modalAdd', fn: typeof cerrarModal === 'function' ? cerrarModal : null},
+                {id: 'modalLogin', fn: typeof cerrarLogin === 'function' ? cerrarLogin : null}
+            ];
+            modales.forEach(m => {
+                const el = document.getElementById(m.id);
+                if (el && !el.classList.contains('hidden') && m.fn) m.fn();
+            });
+        }
+        if (e.key === 'Enter') {
+            if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
+            const openModal = [
+                {id: 'modalAdd', fn: typeof guardar === 'function' ? guardar : null},
+                {id: 'modalLogin', fn: typeof doLogin === 'function' ? doLogin : null}
+            ].find(m => {
+                const el = document.getElementById(m.id);
+                return el && !el.classList.contains('hidden');
+            });
+            if (openModal && openModal.fn) {
+                e.preventDefault();
+                openModal.fn();
+            }
+        }
+    });
 
     function checkSession() {
       const savedRole = localStorage.getItem('fr_role');
       const savedName = localStorage.getItem('fr_name');
       
       if (savedRole && savedName) {
-          currentUserRole = savedRole;
-          currentUserName = savedName;
-          activarInterfaz();
+          currentUserRole = savedRole; currentUserName = savedName; activarInterfaz();
       } else {
           google.script.url.getLocation(function(loc) {
-            if (loc.parameter.v === 'leolu') {
-              currentUserRole = 'MASTER';
-              currentUserName = 'MASTER';
-              localStorage.setItem('fr_role', 'MASTER');
-              localStorage.setItem('fr_name', 'MASTER');
-              activarInterfaz();
+            if (loc && loc.parameter && loc.parameter.v === 'leolu') {
+              currentUserRole = 'MASTER'; currentUserName = 'MASTER';
+              localStorage.setItem('fr_role', 'MASTER'); localStorage.setItem('fr_name', 'MASTER');
             }
+            activarInterfaz();
           });
       }
     }
 
     function getSafeUrl(val) {
-        if(!val) return 'https://via.placeholder.com/300/111827/FFFFFF?text=MERCH';
-        if(val.toString().includes('http')) return val;
-        return 'https://lh3.googleusercontent.com/d/' + val;
+        if(!val) return 'https://placehold.co/600x800/111827/FFFFFF?text=MERCH';
+        if(val.toString().includes('http') || val.toString().startsWith('data:')) return val;
+        return 'https://drive.google.com/thumbnail?id=' + val + '&sz=w1200';
     }
 
     function cargarDatos() {
         document.getElementById('loader').classList.remove('hidden');
         document.getElementById('merchContainer').innerHTML = '';
-        google.script.run.withSuccessHandler(renderGrid).withFailureHandler(()=>alert("Error cargando.")).obtenerMerch();
+        google.script.run.withSuccessHandler(renderGrid).withFailureHandler((err)=>alert("Error cargando: " + err.message)).obtenerMerch();
     }
 
     function renderGrid(data) {
@@ -204,7 +234,7 @@
                     ${badgeOculto} ${adminBtns}
                     <div class="w-full aspect-square bg-[#111827] overflow-hidden relative">
                         ${badgeAgotado}
-                        <img src="${getSafeUrl(m.imagen)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                        <img src="${getSafeUrl(m.imagen)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" onerror="this.src='https://placehold.co/600x600/111827/FFFFFF?text=MERCH';">
                     </div>
                     <div class="p-4 flex flex-col items-center text-center">
                         <h3 class="text-sm font-black uppercase text-white mb-1">${m.nombre}</h3>
@@ -245,10 +275,8 @@
         document.getElementById('modalTitle').innerText = 'AÑADIR ARTÍCULO';
         document.getElementById('editId').value = ''; document.getElementById('currentImgUrl').value = ''; document.getElementById('compressedBase64').value = '';
         document.getElementById('merchName').value = ''; document.getElementById('merchPrice').value = ''; document.getElementById('merchDesc').value = '';
-        document.getElementById('merchHidden').checked = false;
-        document.getElementById('merchAgotado').checked = false;
-        quitarImagen();
-        document.getElementById('modalAdd').classList.remove('hidden');
+        document.getElementById('merchHidden').checked = false; document.getElementById('merchAgotado').checked = false;
+        quitarImagen(); document.getElementById('modalAdd').classList.remove('hidden');
     }
     
     function cerrarModal() { document.getElementById('modalAdd').classList.add('hidden'); }
@@ -264,8 +292,7 @@
         document.getElementById('editId').value = m.id; document.getElementById('currentImgUrl').value = m.imagen;
         document.getElementById('merchName').value = m.nombre; document.getElementById('merchPrice').value = m.precio;
         document.getElementById('merchDesc').value = m.descripcion; 
-        document.getElementById('merchHidden').checked = !!m.oculto;
-        document.getElementById('merchAgotado').checked = !!m.agotado;
+        document.getElementById('merchHidden').checked = !!m.oculto; document.getElementById('merchAgotado').checked = !!m.agotado;
         
         if (m.imagen) {
             document.getElementById('preview').src = getSafeUrl(m.imagen);
@@ -278,14 +305,10 @@
     function guardar() {
         const btn = document.getElementById('btnSave');
         const payload = {
-            id: document.getElementById('editId').value, 
-            nombre: document.getElementById('merchName').value,
-            precio: document.getElementById('merchPrice').value, 
-            descripcion: document.getElementById('merchDesc').value,
-            oculto: document.getElementById('merchHidden').checked,
-            agotado: document.getElementById('merchAgotado').checked,
-            imagenBase64: document.getElementById('compressedBase64').value, 
-            imagenActual: document.getElementById('currentImgUrl').value
+            id: document.getElementById('editId').value, nombre: document.getElementById('merchName').value,
+            precio: document.getElementById('merchPrice').value, descripcion: document.getElementById('merchDesc').value,
+            oculto: document.getElementById('merchHidden').checked, agotado: document.getElementById('merchAgotado').checked,
+            imagenBase64: document.getElementById('compressedBase64').value, imagenActual: document.getElementById('currentImgUrl').value
         };
 
         if(!payload.nombre) { alert("Falta Nombre"); return; }
@@ -293,8 +316,8 @@
         google.script.run
             .withSuccessHandler(r => {
                 btn.innerText = "GUARDAR"; btn.disabled = false;
-                if(r.success) { cerrarModal(); cargarDatos(); } else alert("Error");
-            }).withFailureHandler(() => { alert("Error"); btn.disabled = false; })
+                if(r.success) { cerrarModal(); cargarDatos(); } else { alert("Error"); }
+            }).withFailureHandler((err) => { alert("Error guardando merch: " + err.message); btn.disabled = false; btn.innerText = "GUARDAR"; })
             .procesarMerch(payload);
     }
 
@@ -303,65 +326,47 @@
     }
 
     function activarInterfaz() {
-        document.getElementById('modalLogin').classList.add('hidden');
-        document.getElementById('loginText').innerText = 'LOGOUT';
+        const mLogin = document.getElementById('modalLogin'); if(mLogin) mLogin.classList.add('hidden');
+        const lText = document.getElementById('loginText'); if(lText) lText.innerText = 'LOGOUT';
         
+        const bAdd = document.getElementById('btnAdd');
         if(currentUserRole === 'MASTER') {
-            document.getElementById('btnAdd').classList.remove('hidden');
+            if(bAdd) bAdd.classList.remove('hidden');
         } else {
-            document.getElementById('btnAdd').classList.add('hidden');
+            if(bAdd) bAdd.classList.add('hidden');
         }
         cargarDatos();
     }
 
     function toggleLogin() {
       if(currentUserRole !== null) {
-        currentUserRole = null;
-        currentUserName = '';
-        localStorage.removeItem('fr_role');
-        localStorage.removeItem('fr_name');
-
-        document.getElementById('loginText').innerText = 'LOGIN';
-        document.getElementById('btnAdd').classList.add('hidden');
+        currentUserRole = null; currentUserName = ''; localStorage.removeItem('fr_role'); localStorage.removeItem('fr_name');
+        const lText = document.getElementById('loginText'); if(lText) lText.innerText = 'LOGIN';
+        const bAdd = document.getElementById('btnAdd'); if(bAdd) bAdd.classList.add('hidden');
         cargarDatos();
       } else { 
-        document.getElementById('modalLogin').classList.remove('hidden'); 
-        setTimeout(() => document.getElementById('userEmail').focus(), 100);
+        const mLogin = document.getElementById('modalLogin'); if(mLogin) mLogin.classList.remove('hidden'); 
+        setTimeout(() => { const em = document.getElementById('userEmail'); if(em) em.focus(); }, 100);
       }
     }
     
-    function cerrarLogin() { document.getElementById('modalLogin').classList.add('hidden'); }
+    function cerrarLogin() { const mLogin = document.getElementById('modalLogin'); if(mLogin) mLogin.classList.add('hidden'); }
     
     function doLogin() {
-      const email = document.getElementById('userEmail').value.trim();
-      const pass = document.getElementById('userPass').value.trim();
-      const btn = document.getElementById('btnEntrar');
-      btn.innerText = 'VERIFICANDO...';
-      btn.disabled = true;
+      const email = document.getElementById('userEmail').value.trim(); const pass = document.getElementById('userPass').value.trim();
+      const btn = document.getElementById('btnEntrar'); btn.innerText = 'VERIFICANDO...'; btn.disabled = true;
 
       google.script.run
           .withSuccessHandler((res) => {
-              btn.innerText = 'ENTRAR';
-              btn.disabled = false;
+              btn.innerText = 'ENTRAR'; btn.disabled = false;
               if(res.success) {
-                  currentUserRole = res.role;
-                  currentUserName = res.nombre;
-                  
-                  localStorage.setItem('fr_role', res.role);
-                  localStorage.setItem('fr_name', res.nombre);
-
-                  document.getElementById('userEmail').value = '';
-                  document.getElementById('userPass').value = '';
+                  currentUserRole = res.role; currentUserName = res.nombre;
+                  localStorage.setItem('fr_role', res.role); localStorage.setItem('fr_name', res.nombre);
+                  document.getElementById('userEmail').value = ''; document.getElementById('userPass').value = '';
                   activarInterfaz();
-              } else {
-                  alert(res.error);
-              }
+              } else { alert(res.error); }
           })
-          .withFailureHandler(() => {
-              btn.innerText = 'ENTRAR';
-              btn.disabled = false;
-              alert('Error de conexión');
-          })
+          .withFailureHandler((err) => { btn.innerText = 'ENTRAR'; btn.disabled = false; alert('Error de conexión: ' + err.message); })
           .validarAcceso(email, pass);
     }
   </script>
